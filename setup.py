@@ -56,10 +56,15 @@ setuptools.setup(
         'kubernetes>=9.0.0',
         'jupyterhubutils>=0.12.16,<1.0.0',
         'jupyterhub-jwtauthenticator>=0.1.0,<1.0.0',
+        'wsgiserver>=1.3,<2.0.0',
+        'falcon>=2.0.0,<3.0.0',
+        'python-jose[cryptography]>=3.1.0,<4.0.0',
+        'argo-workflows-sdk'
     ],
     entry_points={
         'console_scripts': [
-            'workflow-rest = wfdispatcher.server:standalone'
+            'workflow-rest = wfdispatcher.server.standalone:standalone',
+            'gen_data = wfdispatcher.helpers.standalone:standalone'
         ],
     }
 )
