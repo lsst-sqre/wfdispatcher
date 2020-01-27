@@ -1,6 +1,7 @@
 import json
 import falcon
 from ..loggablechild import LoggableChild
+from .list import extract_wf_names
 
 
 class New(LoggableChild):
@@ -32,7 +33,8 @@ class New(LoggableChild):
             json.dumps(data, sort_keys=True, indent=4)))
         self._validate_input(data)
         # If we got here, it's syntactically valid
-        self.make_workflow(data)
+        wf_name = self.make_workflow(data)
+        resp.media = {"name": wf_name}
 
     def _validate_input(self, data):
         '''Raises an exception if the posted data does not conform to
@@ -77,4 +79,17 @@ class New(LoggableChild):
 
     def make_workflow(self, data):
         wm = self.parent.lsst_mgr.workflow_mgr
-        wm.submit_workflow(data)
+        # There might be no namespace at all, in which case, list_workflows
+        #  returns None
+        owf = wm.list_workflows()
+        origlist = []
+        if owf:
+            origlist = [x['name']
+                        for x in extract_wf_names(owf.items)]
+        wf = wm.submit_workflow(data)
+        pref = wm.wf_input['name'] + '-'
+        newlist = [x['name']
+                   for x in extract_wf_names(wm.list_workflows().items)]
+        for n in newlist:
+            if n.startswith(pref) and n not in origlist:
+                return n

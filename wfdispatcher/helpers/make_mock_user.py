@@ -11,7 +11,7 @@ def make_mock_user():
                 'public': 1000}
 
     claims = {'uid': user.name,
-              'uidNumber': 4,
+              'uidNumber': 1934,
               'exp': int(exp.timestamp())
               }
 

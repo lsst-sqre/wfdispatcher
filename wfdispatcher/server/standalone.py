@@ -8,7 +8,7 @@ def standalone():
     '''Standalone command for starting a server.
     '''
     parser = argparse.ArgumentParser(
-        description="Start WF API Dispatch Server")
+        description="Start Argo Workflow API Dispatch Server")
     parser.add_argument("-p", "--port", help="Server listening port",
                         type=int, default=8080)
     parser.add_argument("-b", "--bind-address", help="Server bind address",

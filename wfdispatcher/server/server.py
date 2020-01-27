@@ -3,14 +3,18 @@
 
 import falcon
 from ..auth.auth import Authenticator
+from ..api.apimanager import LSSTAPIManager
+from ..workflow.workflowmanager import LSSTWorkflowManager
+from ..spawner.mockspawner import MockSpawner
 from .requirejson import RequireJSON
 from .new import New
+from .details import Details
 from .list import List
+from .logs import Logs
+from .pods import Pods
 from .singleworkflow import SingleWorkflow
 from .version import Version
 from jupyterhubutils import make_logger, LSSTConfig, LSSTMiddleManager
-from ..api.apimanager import LSSTAPIManager
-from ..workflow.workflowmanager import LSSTWorkflowManager
 
 
 class Server(object):
@@ -21,6 +25,7 @@ class Server(object):
     app = None
     api_mgr = None
     lsst_mgr = None
+    spawner = None
     _mock = False
 
     def __init__(self, *args, **kwargs):
@@ -45,12 +50,15 @@ class Server(object):
         self.auth = Authenticator(parent=self, _mock=_mock,
                                   verify_signature=verify_signature,
                                   verify_audience=verify_audience)
+        self.spawner = MockSpawner(parent=self)
         self.lsst_mgr.optionsform_mgr._make_sizemap()
         self.lsst_mgr.workflow_mgr = LSSTWorkflowManager(
             parent=self.lsst_mgr)
+        self.lsst_mgr.spawner = self.spawner
         self.lsst_mgr.api = self.api_mgr.api
         self.lsst_mgr.rbac_api = self.api_mgr.rbac_api
         self.lsst_mgr.workflow_mgr.argo_api = self.api_mgr.argo_api
+        self.lsst_mgr.volume_mgr.make_volumes_from_config()
         self.app = falcon.API(middleware=[
             self.auth,
             RequireJSON()
@@ -58,8 +66,20 @@ class Server(object):
         ver = Version()
         ll = List(parent=self)
         single = SingleWorkflow(parent=self)
+        pods = Pods(parent=self)
+        logs = Logs(parent=self)
+        new = New(parent=self)
+        details = Details(parent=self)
         self.app.add_route('/', ll)
+        self.app.add_route('/workflow', ll)
+        self.app.add_route('/workflow/', ll)
         self.app.add_route('/workflows', ll)
+        self.app.add_route('/workflows/', ll)
         self.app.add_route('/version', ver)
-        self.app.add_route('/new', New(parent=self))
+        self.app.add_route('/version/', ver)
+        self.app.add_route('/new', new)
+        self.app.add_route('/new/', new)
         self.app.add_route('/workflow/{wf_id}', single)
+        self.app.add_route('/workflow/{wf_id}/pods', pods)
+        self.app.add_route('/workflow/{wf_id}/logs', logs)
+        self.app.add_route('/workflow/{wf_id}/details/{pod_id}', details)

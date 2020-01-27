@@ -35,6 +35,8 @@ spec:
           value: "TRUE"
         - name: WF_NO_VERIFY_AUDIENCE
           value: "TRUE"
+        - name: WF_API_ADDR
+          value: "0.0.0.0"
         image: lsstsqre/wfdispatcher:0.0.1
         imagePullPolicy: Always
         name: workflow-dispatcher
@@ -57,6 +59,10 @@ spec:
         - mountPath: /opt/jwt
           name: jwt-cert
           readOnly: true
+        - mountPath: /opt/lsst/software/jupyterhub/mounts
+          name: fs-mounts
+        - mountPath: /opt/lsst/software/jupyterhub/resources
+          name: resourcemap
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
@@ -87,3 +93,17 @@ spec:
             path: signing-certificate.pem
           name: nublado-jwt-cert
         name: jwt-cert
+      - configMap:
+          defaultMode: 420
+          items:
+          - key: mountpoints.json
+            path: mountpoints.json
+          name: nublado-fs-mounts
+        name: fs-mounts
+      - configMap:
+          defaultMode: 420
+          items:
+          - key: resourcemap.json
+            path: resourcemap.json
+          name: nublado-resourcemap
+        name: resourcemap

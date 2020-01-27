@@ -64,7 +64,8 @@ setuptools.setup(
     entry_points={
         'console_scripts': [
             'workflow-rest = wfdispatcher.server.standalone:standalone',
-            'gen_data = wfdispatcher.helpers.standalone:standalone'
+            'gen_data = wfdispatcher.helpers.standalone:standalone',
+            'workflow-api-client = wfdispatcher.client.standalone:standalone',
         ],
     }
 )

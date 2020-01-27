@@ -20,6 +20,8 @@ class LSSTWorkflowManager(LoggableChild):
     cmd_mt = None
     argo_api = None
     workflow = None
+    cfg_map = None
+    wf_input = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -45,13 +47,13 @@ class LSSTWorkflowManager(LoggableChild):
         idkey = list_digest(ni_cmd)
         cm_name = 'command.{}.json'.format(idkey)
         k8s_vol = client.V1Volume(
-            name="noninteractive_command",
+            name="noninteractive-command",
             config_map=client.V1ConfigMapVolumeSource(
-                items=[{'key': cm_name,
-                        'path': 'command.json'}]),
+                name=cm_name
+            ),
         )
         k8s_mt = client.V1VolumeMount(
-            name="noninteractive_command",
+            name="noninteractive-command",
             mount_path="/opt/lsst/software/jupyterlab/noninteractive/command/",
             read_only=True
         )
@@ -89,16 +91,25 @@ class LSSTWorkflowManager(LoggableChild):
             "Size '{}' resolves to '{}'".format(data['size'], size_map))
         ml = size_map['mem']
         cl = size_map['cpu']
-        sr = cfg.lab_size_range
+        sr = float(cfg.lab_size_range)
         mg = None
         cg = None
         if data['size'] == "tiny":
             # Take the guarantees from the config object
             mg = cfg.mem_guarantee
+            mgs = str(mg)
+            # I really screwed up these defaults.
+            while mgs and not mgs[-1].isdigit():
+                mgs = mgs[:-1]
+            if not mgs:
+                mgs = '1.0'
+            mg = float(mgs)
             cg = cfg.cpu_guarantee
         else:
             mg = float(ml / sr)
             cg = float(cl / sr)
+        mg = int(mg)
+        ml = int(ml)
         wf_input['mem_limit'] = ml
         wf_input['mem_guar'] = mg
         wf_input['cpu_limit'] = cl
@@ -116,8 +127,8 @@ class LSSTWorkflowManager(LoggableChild):
         env['DASK_VOLUME_B64'] = vm.get_dask_volume_b64()
         cname = "wf-{}-{}-{}".format(
             user.escaped_name,
-            data['image'].split(':')[-1],
-            data['command'][0].split('/')[-1])
+            data['image'].split(':')[-1].replace('_', '-'),
+            data['command'][0].split('/')[-1].replace('_', '-'))
         wf_input['name'] = cname
         env['JUPYTERHUB_USER'] = cname
         env['NONINTERACTIVE'] = "TRUE"
@@ -135,6 +146,7 @@ class LSSTWorkflowManager(LoggableChild):
         # ...now put the real values back
         wf_input['vols'] = vols
         wf_input['vmts'] = vmts
+        self.wf_input = wf_input
 
         wf = LSSTWorkflow(parms=wf_input)
         self.log.debug("Workflow: {}".format(wf))
@@ -156,15 +168,47 @@ class LSSTWorkflowManager(LoggableChild):
         api = self.argo_api
         self.log.debug(
             "Listing workflows in namespace '{}'".format(namespace))
-        wfs = api.list_namespaced_workflows(namespace=namespace)
+        nl = self.parent.api.list_namespace(timeout_seconds=1)
+        found = False
+        for ns in nl.items:
+            nsname = ns.metadata.name
+            if nsname == namespace:
+                self.log.debug("Namespace {} found.".format(namespace))
+                found = True
+                break
+        if not found:
+            self.log.debug("No namespace {} found.".format(namespace))
+            wfs = None
+        else:
+            wfs = api.list_namespaced_workflows(namespace=namespace)
         return wfs
 
     def create_workflow(self):
         workflow = self.workflow
         namespace = self.parent.namespace_mgr.namespace
         api = self.argo_api
+        self.create_configmap()
+        self.log.debug(
+            "Creating workflow in namespace {}: '{}'".format(
+                namespace, workflow))
         wf = api.create_namespaced_workflow(namespace, workflow)
         return wf
+
+    def create_configmap(self):
+        api = self.parent.api
+        namespace = self.parent.namespace_mgr.namespace
+        cfgmap = self.cfg_map
+        try:
+            self.log.info(
+                "Attempting to create configmap in {}".format(namespace))
+            api.create_namespaced_config_map(namespace, cfgmap)
+        except ApiException as e:
+            if e.status != 409:
+                estr = "Create configmap failed: {}".format(e)
+                self.log.exception(estr)
+                raise
+            else:
+                self.log.info("Configmap already exists.")
 
     def submit_workflow(self, data):
         self.define_workflow(data)
@@ -226,7 +270,7 @@ class LSSTWorkflowManager(LoggableChild):
                               "already exists in '%s'." % namespace)
 
     def _define_namespaced_account_objects(self):
-        namespace = self.namespace
+        namespace = self.parent.namespace_mgr.namespace
         username = self.parent.parent.auth.user.escaped_name
         account = "{}-{}".format(username, "argo")
         self.service_account = account
@@ -284,13 +328,13 @@ class LSSTWorkflowManager(LoggableChild):
         return svcacct, role, rolebinding
 
     def delete_workflow(self, wfid):
-        namespace = self.namespace
+        namespace = self.parent.namespace_mgr.namespace
         api = self.argo_api
         wf = api.delete_namespaced_workflow(namespace, wfid)
         return wf
 
     def get_workflow(self, wfid):
-        namespace = self.namespace
+        namespace = self.parent.namespace_mgr.namespace
         api = self.argo_api
         wf = api.get_namespaced_workflow(namespace, wfid)
         return wf
