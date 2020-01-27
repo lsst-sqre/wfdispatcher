@@ -7,7 +7,7 @@ RUN  python3 -m ensurepip
 RUN  pip3 install --upgrade pip setuptools
 #ENV  PYCURL_SSL_LIBRARY=openssl
 RUN  pip3 install jupyterhubutils
-ARG  BUILDTRIGGER="Mon Jan 27 11:32:44 MST 2020"
+ARG  BUILDTRIGGER="Mon Jan 27 14:26:37 MST 2020"
 RUN  pip3 install \
      git+https://github.com/lsst-sqre/wfdispatcher
 ENV  wf=/opt/lsst/software/workflow
