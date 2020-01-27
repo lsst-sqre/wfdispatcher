@@ -6,8 +6,8 @@ RUN  yum install -y python3 python3-devel git
 RUN  python3 -m ensurepip
 RUN  pip3 install --upgrade pip setuptools
 #ENV  PYCURL_SSL_LIBRARY=openssl
-RUN  pip3 install jupyterhubutils
-ARG  BUILDTRIGGER="Mon Jan 27 14:26:37 MST 2020"
+RUN  pip3 install jupyterhubutils wsgiserver falcon python-jose[cryptography]
+ARG  BUILDTRIGGER="Mon Jan 27 14:28:41 MST 2020"
 RUN  pip3 install \
      git+https://github.com/lsst-sqre/wfdispatcher
 ENV  wf=/opt/lsst/software/workflow
