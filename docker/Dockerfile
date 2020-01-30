@@ -13,7 +13,7 @@ RUN  pip3 install \
       python-jose[cryptography] \
       mock \
       inflection
-ARG  BUILDTRIGGER="Wed Jan 29 16:23:53 MST 2020"
+ARG  BUILDTRIGGER="Thu Jan 30 11:05:46 MST 2020"
 RUN  pip3 install \
      git+https://github.com/lsst-sqre/wfdispatcher
 ENV  wf=/opt/lsst/software/workflow
