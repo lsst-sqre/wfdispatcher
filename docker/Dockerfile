@@ -13,10 +13,11 @@ RUN  pip3 install \
       mock \
       inflection \
       jupyterhubutils
-ARG  BUILDTRIGGER="Thu Jan 30 16:16:11 MST 2020"
+ARG  TKT="tickets/DM-23244"
+ARG  BUILDTRIGGER="Thu Jan 30 16:22:48 MST 2020"
 RUN  pip3 install --upgrade \
-     git+https://github.com/lsst-sqre/jupyterhubutils.git@tickets/DM-23244 \
-     git+https://github.com/lsst-sqre/wfdispatcher.git
+     git+https://github.com/lsst-sqre/jupyterhubutils.git@${TKT} \
+     git+https://github.com/lsst-sqre/wfdispatcher.git@${TKT}
 ENV  wf=/opt/lsst/software/workflow
 ENV  verdir=${wf}/versions
 RUN  mkdir -p ${verdir}
