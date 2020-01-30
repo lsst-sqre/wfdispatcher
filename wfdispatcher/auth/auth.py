@@ -2,10 +2,17 @@ import datetime
 import falcon
 from jose import jwt
 from jupyterhubutils import LoggableChild
-from jupyterhubutils.utils import get_default_namespace
+from jupyterhubutils.utils import get_execution_namespace
 from urllib.parse import quote
 from ..helpers.make_mock_user import make_mock_user
 from ..user.user import User
+
+
+def get_default_namespace():
+    ns = get_execution_namespace()
+    if ns is None:
+        ns = "default"
+    return ns
 
 
 class AuthenticatorMiddleware(LoggableChild):
