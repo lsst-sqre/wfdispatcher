@@ -7,15 +7,16 @@ RUN  python3 -m ensurepip
 RUN  pip3 install --upgrade pip setuptools
 #ENV  PYCURL_SSL_LIBRARY=openssl
 RUN  pip3 install \
-      jupyterhubutils \
       wsgiserver \
       falcon \
       python-jose[cryptography] \
       mock \
-      inflection
-ARG  BUILDTRIGGER="Thu Jan 30 15:46:43 MST 2020"
-RUN  pip3 install \
-     git+https://github.com/lsst-sqre/wfdispatcher
+      inflection \
+      jupyterhubutils
+ARG  BUILDTRIGGER="Thu Jan 30 16:16:11 MST 2020"
+RUN  pip3 install --upgrade \
+     git+https://github.com/lsst-sqre/jupyterhubutils.git@tickets/DM-23244 \
+     git+https://github.com/lsst-sqre/wfdispatcher.git
 ENV  wf=/opt/lsst/software/workflow
 ENV  verdir=${wf}/versions
 RUN  mkdir -p ${verdir}
@@ -29,5 +30,5 @@ RUN  useradd -m -g jovyan -u 768 -c "JupyterHub User" jovyan
 USER 768:768
 LABEL description="Science Platform Notebook Aspect: workflow dispatcher" \
        name="lsstsqre/wfdispatcher" \
-       version="0.0.1"
+       version="0.0.2"
 CMD [ "/usr/local/bin/start-wf-api" ]
