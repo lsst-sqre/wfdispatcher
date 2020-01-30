@@ -26,6 +26,7 @@ class Server(Loggable):
     _mock = False
 
     def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.lsst_mgr = LSSTMiddleManager(parent=self, config=LSSTConfig())
         _mock = kwargs.pop('_mock', self._mock)
         self._mock = _mock
