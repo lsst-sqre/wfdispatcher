@@ -14,7 +14,7 @@ RUN  pip3 install \
       inflection \
       jupyterhubutils
 ARG  TKT="tickets/DM-23244"
-ARG  BUILDTRIGGER="Thu Jan 30 16:31:25 MST 2020"
+ARG  BUILDTRIGGER="Thu Jan 30 16:33:13 MST 2020"
 RUN  pip3 install --upgrade \
      git+https://github.com/lsst-sqre/jupyterhubutils.git@${TKT} \
      git+https://github.com/lsst-sqre/wfdispatcher.git@${TKT}

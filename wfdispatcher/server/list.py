@@ -1,4 +1,4 @@
-from ..loggablechild import LoggableChild
+from jupyterhubutils import LoggableChild
 from falcon import HTTPNotFound
 
 
