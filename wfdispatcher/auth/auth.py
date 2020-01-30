@@ -26,6 +26,7 @@ class AuthenticatorMiddleware(LoggableChild):
     _mock = False
 
     def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.log.debug("Creating Authenticator.")
         _mock = kwargs.pop('_mock', self._mock)
         self._mock = _mock
