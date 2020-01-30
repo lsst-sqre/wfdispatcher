@@ -1,14 +1,14 @@
 import datetime
 import falcon
 from jose import jwt
-from jupyterhubutils import make_logger
+from jupyterhubutils import LoggableChild
 from urllib.parse import quote
 from ..helpers.make_mock_user import make_mock_user
 from ..user.user import User
 from ..util.get_default_namespace import get_default_namespace
 
 
-class Authenticator(object):
+class AuthenticatorMiddleware(LoggableChild):
     auth_header_name = 'X-Portal-Authorization'
     username_claim_field = 'uid'
     verify_signature = True
@@ -19,12 +19,6 @@ class Authenticator(object):
     _mock = False
 
     def __init__(self, *args, **kwargs):
-        parent = kwargs.pop('parent', self.parent)
-        if not parent:
-            es = "Authenticator must be passed parent at __init__()"
-            raise ValueError(es)
-        self.parent = parent
-        self.log = make_logger()
         self.log.debug("Creating Authenticator.")
         _mock = kwargs.pop('_mock', self._mock)
         self._mock = _mock

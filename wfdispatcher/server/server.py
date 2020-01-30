@@ -2,11 +2,9 @@
 '''
 
 import falcon
-from ..auth.auth import Authenticator
-from ..api.apimanager import LSSTAPIManager
-from ..workflow.workflowmanager import LSSTWorkflowManager
-from ..spawner.mockspawner import MockSpawner
-from .requirejson import RequireJSON
+from ..auth.auth import AuthenticatorMiddleware
+from ..helpers.mockspawner import MockSpawner
+from .requirejson import RequireJSONMiddleware
 from .new import New
 from .details import Details
 from .list import List
@@ -14,24 +12,21 @@ from .logs import Logs
 from .pods import Pods
 from .singleworkflow import SingleWorkflow
 from .version import Version
-from jupyterhubutils import make_logger, LSSTConfig, LSSTMiddleManager
+from jupyterhubutils import Loggable, LSSTConfig, LSSTMiddleManager
 
 
-class Server(object):
+class Server(Loggable):
     config = None
     verify_signature = True
     verify_audience = True
     auth = None
     app = None
-    api_mgr = None
     lsst_mgr = None
     spawner = None
     _mock = False
 
     def __init__(self, *args, **kwargs):
         self.lsst_mgr = LSSTMiddleManager(parent=self, config=LSSTConfig())
-        self.log = make_logger()
-        self.log.debug("Creating WorkflowAPIServer")
         _mock = kwargs.pop('_mock', self._mock)
         self._mock = _mock
         if _mock:
@@ -46,22 +41,16 @@ class Server(object):
         self.verify_audience = verify_audience
         if not verify_audience:
             self.log.warning("Running with audience verification disabled.")
-        self.api_mgr = LSSTAPIManager(parent=self)
-        self.auth = Authenticator(parent=self, _mock=_mock,
-                                  verify_signature=verify_signature,
-                                  verify_audience=verify_audience)
+        self.auth = AuthenticatorMiddleware(parent=self, _mock=_mock,
+                                            verify_signature=verify_signature,
+                                            verify_audience=verify_audience)
         self.spawner = MockSpawner(parent=self)
         self.lsst_mgr.optionsform_mgr._make_sizemap()
-        self.lsst_mgr.workflow_mgr = LSSTWorkflowManager(
-            parent=self.lsst_mgr)
         self.lsst_mgr.spawner = self.spawner
-        self.lsst_mgr.api = self.api_mgr.api
-        self.lsst_mgr.rbac_api = self.api_mgr.rbac_api
-        self.lsst_mgr.workflow_mgr.argo_api = self.api_mgr.argo_api
         self.lsst_mgr.volume_mgr.make_volumes_from_config()
         self.app = falcon.API(middleware=[
             self.auth,
-            RequireJSON()
+            RequireJSONMiddleware()
         ])
         ver = Version()
         ll = List(parent=self)
