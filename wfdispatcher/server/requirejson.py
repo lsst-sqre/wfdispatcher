@@ -1,7 +1,7 @@
 import falcon
 
 
-class RequireJSON(object):
+class RequireJSONMiddleware(object):
 
     def process_request(self, req, resp):
         if not req.client_accepts_json:

@@ -1,7 +1,7 @@
 import json
 import os
 import requests
-from ..loggable import Loggable
+from jupyterhubutils import Loggable
 
 
 class Client(Loggable):

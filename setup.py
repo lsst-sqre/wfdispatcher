@@ -53,13 +53,10 @@ setuptools.setup(
     install_requires=[
         'requests>=2.0.0,<3.0.0',
         'semver>=2.0.0,<3.0.0',
-        'kubernetes>=9.0.0',
-        'jupyterhubutils>=0.12.16,<1.0.0',
-        'jupyterhub-jwtauthenticator>=0.1.0,<1.0.0',
+        'jupyterhubutils>=0.14.0,<1.0.0',
         'wsgiserver>=1.3,<2.0.0',
         'falcon>=2.0.0,<3.0.0',
         'python-jose[cryptography]>=3.1.0,<4.0.0',
-        'argo-workflows-sdk'
     ],
     entry_points={
         'console_scripts': [

@@ -1,4 +1,4 @@
-from ..loggablechild import LoggableChild
+from jupyterhubutils import LoggableChild
 from argo.workflows.sdk._utils import sanitize_for_serialization
 from falcon import HTTPNotFound
 

@@ -1,6 +1,6 @@
 import falcon
 from .._version import __version__
-from ..loggable import Loggable
+from jupyterhubutils import Loggable
 
 
 class Version(Loggable):

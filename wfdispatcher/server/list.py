@@ -1,5 +1,4 @@
-from ..loggablechild import LoggableChild
-from falcon import HTTPNotFound
+from jupyterhubutils import LoggableChild
 
 
 class List(LoggableChild):
@@ -8,7 +7,8 @@ class List(LoggableChild):
         wfm = self.parent.lsst_mgr.workflow_mgr
         wfs = wfm.list_workflows()
         if not wfs:
-            raise HTTPNotFound()
+            resp.media = []
+            return
         resp.media = extract_wf_names(wfs.items)
 
 

@@ -1,6 +1,6 @@
 import json
 import falcon
-from ..loggablechild import LoggableChild
+from jupyterhubutils import LoggableChild
 from .list import extract_wf_names
 
 
