@@ -12,8 +12,8 @@ RUN  pip3 install \
       python-jose[cryptography] \
       mock \
       inflection \
-      jupyterhubutils>=0.14.0,<1.0.0 \
-      wfdispatcher>=0.0.2,<1.0.0
+      'jupyterhubutils>=0.14.0,<1.0.0' \
+      'wfdispatcher>=0.0.2,<1.0.0'
 #ARG  TKT="tickets/DM-23244"
 #ARG  BUILDTRIGGER="Fri Jan 31 09:47:33 MST 2020"
 #RUN  pip3 install --upgrade \
