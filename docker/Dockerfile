@@ -12,12 +12,13 @@ RUN  pip3 install \
       python-jose[cryptography] \
       mock \
       inflection \
-      jupyterhubutils
-ARG  TKT="tickets/DM-23244"
-ARG  BUILDTRIGGER="Thu Jan 30 16:40:48 MST 2020"
-RUN  pip3 install --upgrade \
-     git+https://github.com/lsst-sqre/jupyterhubutils.git@${TKT} \
-     git+https://github.com/lsst-sqre/wfdispatcher.git@${TKT}
+      jupyterhubutils>=0.14.0,<1.0.0 \
+      wfdispatcher>=0.0.2,<1.0.0
+#ARG  TKT="tickets/DM-23244"
+#ARG  BUILDTRIGGER="Fri Jan 31 09:47:33 MST 2020"
+#RUN  pip3 install --upgrade \
+#     git+https://github.com/lsst-sqre/jupyterhubutils.git@${TKT} \
+#     git+https://github.com/lsst-sqre/wfdispatcher.git@${TKT}
 ENV  wf=/opt/lsst/software/workflow
 ENV  verdir=${wf}/versions
 RUN  mkdir -p ${verdir}
