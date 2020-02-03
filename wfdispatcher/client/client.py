@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+from json.decoder import JSONDecodeError
 from jupyterhubutils import Loggable
 
 
@@ -61,13 +62,20 @@ class Client(Loggable):
         h_copy.update(self.headers)
         if h_copy.get(self.auth_header_name):
             h_copy[self.auth_header_name] = "bearer [REDACTED]"
-        dstr += "and headers {}".format(h_copy)
+        dstr += "with headers {}".format(h_copy)
         if data:
             dstr += " and data '{}'".format(json.dumps(data, sort_keys=True,
                                                        indent=4))
         self.log.debug(dstr)
-        self.last_response = requests.request(
-            verb, url, headers=self.headers, json=data).json()
+        response = requests.request(
+            verb, url, headers=self.headers, json=data)
+        try:
+            jr = response.json()
+            self.last_response = jr
+        except JSONDecodeError as exc:
+            self.log.error("{}: JSON decode failed".format(exc))
+            self.log.error("Response was: {}".format(response.text))
+            self.last_response = None
 
     def load_data(self):
         with open(self.post_json_file, 'r') as f:
