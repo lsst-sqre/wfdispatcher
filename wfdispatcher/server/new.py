@@ -32,8 +32,12 @@ class New(LoggableChild):
             json.dumps(data, sort_keys=True, indent=4)))
         self._validate_input(data)
         # If we got here, it's syntactically valid
-        wf_name = self.make_workflow(data)
-        resp.media = {"name": wf_name}
+        wf = self.make_workflow(data)
+        if wf:
+            resp.media = {"name": wf.metadata.name}
+        else:
+            raise falcon.HTTPInternalServerError(
+                description="No workflow created")
 
     def _validate_input(self, data):
         '''Raises an exception if the posted data does not conform to
@@ -81,3 +85,4 @@ class New(LoggableChild):
         # There might be no namespace at all, in which case, list_workflows
         #  returns None
         wf = wm.submit_workflow(data)
+        return wf
