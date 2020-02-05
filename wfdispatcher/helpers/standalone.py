@@ -12,8 +12,11 @@ def standalone():
                         default="postbody.json")
     parser.add_argument("-r", "--headerfile", help="Auth header file",
                         default="authheader.txt")
+    parser.add_argument("-m", "--mock", help="Make mock user, not from env",
+                        action='store_true')
     args = parser.parse_args()
-    generator = Generator(bodyfile=args.bodyfile, headerfile=args.headerfile)
+    generator = Generator(bodyfile=args.bodyfile, headerfile=args.headerfile,
+                          _mock=args.mock)
     generator.go()
 
 
