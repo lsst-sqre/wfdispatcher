@@ -13,7 +13,7 @@ def standalone():
         description="LSST Argo Workflow API Client")
     parser.add_argument("operation",
                         default="list",
-                        help=("Operation (one of 'list', 'new', 'delete', " +
+                        help=("Operation (one of 'list', 'create', 'delete', " +
                               "'inspect', 'logs', 'pods', 'details', or " +
                               "'version')"))
     parser.add_argument("-u", "--url", help="Workflow API Server URL",
