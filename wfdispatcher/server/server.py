@@ -28,6 +28,7 @@ class Server(Loggable):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.lsst_mgr = LSSTMiddleManager(parent=self, config=LSSTConfig())
+        self.lsst_mgr.env_mgr.create_pod_env()
         _mock = kwargs.pop('_mock', self._mock)
         self._mock = _mock
         if _mock:

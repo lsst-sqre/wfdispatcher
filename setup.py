@@ -32,7 +32,7 @@ LONG_DESCRIPTION = local_read("README.md")
 VERSION = get_version('%s/_version.py' % NAME)
 AUTHOR = 'Adam Thornton'
 AUTHOR_EMAIL = 'athornton@lsst.org'
-URL = 'https://github.com/sqre-lsst/jupyterhubutils'
+URL = 'https://github.com/sqre-lsst/wfdispatcher'
 LICENSE = 'MIT'
 
 setuptools.setup(
@@ -49,11 +49,11 @@ setuptools.setup(
         'Programming Language :: Python :: 3.6',
         'License :: OSI Approved :: MIT License',
     ],
-    keywords=['lsst', 'rubinobservatory'],
+    keywords=['lsst', 'rubinobservatory', 'argo', 'workflow', 'jupyter'],
     install_requires=[
         'requests>=2.0.0,<3.0.0',
         'semver>=2.0.0,<3.0.0',
-        'jupyterhubutils>=0.14.2,<1.0.0',
+        'jupyterhubutils>=0.15.2,<1.0.0',
         'wsgiserver>=1.3,<2.0.0',
         'falcon>=2.0.0,<3.0.0',
         'python-jose[cryptography]>=3.1.0,<4.0.0',
