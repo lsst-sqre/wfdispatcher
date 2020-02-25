@@ -2,7 +2,7 @@
 '''
 
 import falcon
-from ..auth.auth import AuthenticatorMiddleware
+from ..auth.auth import AuthenticatorMiddleware as AM
 from ..helpers.mockspawner import MockSpawner
 from .requirejson import RequireJSONMiddleware
 from .new import New
@@ -19,7 +19,7 @@ class Server(Loggable):
     config = None
     verify_signature = True
     verify_audience = True
-    auth = None
+    authenticator = None
     app = None
     lsst_mgr = None
     spawner = None
@@ -43,15 +43,15 @@ class Server(Loggable):
         self.verify_audience = verify_audience
         if not verify_audience:
             self.log.warning("Running with audience verification disabled.")
-        self.auth = AuthenticatorMiddleware(parent=self, _mock=_mock,
-                                            verify_signature=verify_signature,
-                                            verify_audience=verify_audience)
+        self.authenticator = AM(parent=self, _mock=_mock,
+                                verify_signature=verify_signature,
+                                verify_audience=verify_audience)
         self.spawner = MockSpawner(parent=self)
         self.lsst_mgr.optionsform_mgr._make_sizemap()
         self.lsst_mgr.spawner = self.spawner
         self.lsst_mgr.volume_mgr.make_volumes_from_config()
         self.app = falcon.API(middleware=[
-            self.auth,
+            self.authenticator,
             RequireJSONMiddleware()
         ])
         ver = Version()

@@ -20,9 +20,10 @@ class AuthenticatorMiddleware(LoggableChild):
     username_claim_field = 'uid'
     verify_signature = True
     verify_audience = True
-    _secret = None
     parent = None
     user = None
+    token = None
+    _secret = None
     _mock = False
 
     def __init__(self, *args, **kwargs):
@@ -87,6 +88,7 @@ class AuthenticatorMiddleware(LoggableChild):
         self.parent.lsst_mgr.user = self.user
         self.parent.lsst_mgr.namespace_mgr.set_namespace(
             self.get_user_namespace())
+        self.token = token
 
     def get_user_namespace(self):
         def_ns = get_default_namespace()
