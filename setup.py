@@ -53,7 +53,7 @@ setuptools.setup(
     install_requires=[
         'requests>=2.0.0,<3.0.0',
         'semver>=2.0.0,<3.0.0',
-        'jupyterhubutils>=0.15.3,<1.0.0',
+        'jupyterhubutils>=0.15.4,<1.0.0',
         'wsgiserver>=1.3,<2.0.0',
         'falcon>=2.0.0,<3.0.0',
         'python-jose[cryptography]>=3.1.0,<4.0.0',
