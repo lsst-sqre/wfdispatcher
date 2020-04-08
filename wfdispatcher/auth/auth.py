@@ -1,5 +1,6 @@
 import datetime
 import falcon
+from eliot import log_call, start_action
 from jose import jwt
 from jupyterhubutils import LoggableChild
 from jupyterhubutils.utils import get_execution_namespace
@@ -51,6 +52,7 @@ class AuthenticatorMiddleware(LoggableChild):
             'username_claim_field', self.username_claim_field)
         self.username_claim_field = username_claim_field
 
+    @log_call
     def process_request(self, req, resp):
         '''Get auth token from request.  Raise if it does not validate.'''
         if self._mock:
@@ -90,6 +92,7 @@ class AuthenticatorMiddleware(LoggableChild):
             self.get_user_namespace())
         self.token = token
 
+    @log_call
     def get_user_namespace(self):
         def_ns = get_default_namespace()
         if def_ns == "default":
@@ -98,6 +101,7 @@ class AuthenticatorMiddleware(LoggableChild):
         else:
             return "{}-{}".format(def_ns, self.user.escaped_name)
 
+    @log_call
     def verify_jwt(self, token):
         cfg = self.parent.lsst_mgr.config
         cert = cfg.jwt_signing_certificate
@@ -121,32 +125,33 @@ class AuthenticatorMiddleware(LoggableChild):
         return jwt.decode(token, self._secret, audience=aud, options=opts)
 
     def _make_user_from_claims(self, claims):
-        username = claims[self.username_claim_field]
-        if '@' in username:
-            # Process as if email and use localpart equivalent
-            username = username.split('@')[0]
-        escaped_name = quote(username, safe='@~')
-        user = User()
-        user.name = username
-        user.escaped_name = escaped_name
-        groupmap = {}
-        auth_state = {}
-        for grp in claims['isMemberOf']:
-            name = grp['name']
-            gid = grp.get('id')
-            if not gid:
-                continue
-            groupmap[name] = str(gid)
-        uid = claims['uidNumber']
-        auth_state['username'] = escaped_name
-        auth_state['uid'] = uid
-        auth_state['group_map'] = groupmap
-        auth_state['claims'] = claims
-        groups = list(groupmap.keys())
-        user.groups = groups
-        user.auth_state = auth_state
-        # Update linked objects.
-        am = self.parent.lsst_mgr.auth_mgr
-        am.auth_state = auth_state
-        am.group_map = auth_state['group_map']
-        return user
+        with start_action(action_type="_make_user_from_claims"):
+            username = claims[self.username_claim_field]
+            if '@' in username:
+                # Process as if email and use localpart equivalent
+                username = username.split('@')[0]
+            escaped_name = quote(username, safe='@~')
+            user = User()
+            user.name = username
+            user.escaped_name = escaped_name
+            groupmap = {}
+            auth_state = {}
+            for grp in claims['isMemberOf']:
+                name = grp['name']
+                gid = grp.get('id')
+                if not gid:
+                    continue
+                groupmap[name] = str(gid)
+            uid = claims['uidNumber']
+            auth_state['username'] = escaped_name
+            auth_state['uid'] = uid
+            auth_state['group_map'] = groupmap
+            auth_state['claims'] = claims
+            groups = list(groupmap.keys())
+            user.groups = groups
+            user.auth_state = auth_state
+            # Update linked objects.
+            am = self.parent.lsst_mgr.auth_mgr
+            am.auth_state = auth_state
+            am.group_map = auth_state['group_map']
+            return user

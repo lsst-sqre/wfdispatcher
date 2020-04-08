@@ -1,10 +1,12 @@
 from jupyterhubutils import LoggableChild
 from argo.workflows.sdk._utils import sanitize_for_serialization
+from eliot import log_call
 from falcon import HTTPNotFound
 
 
 class Details(LoggableChild):
 
+    @log_call
     def on_get(self, req, resp, wf_id, pod_id):
         self.log.debug("Getting details for pod '{}' in workflow '{}'".format(
             pod_id, wf_id))
