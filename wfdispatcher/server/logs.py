@@ -1,8 +1,10 @@
+from eliot import log_call
 from jupyterhubutils import LoggableChild
 
 
 class Logs(LoggableChild):
 
+    @log_call
     def on_get(self, req, resp, wf_id):
         self.log.debug("Fetching logs for workflow '{}'".format(wf_id))
         lm = self.parent.lsst_mgr

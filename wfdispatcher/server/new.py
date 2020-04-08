@@ -1,10 +1,12 @@
 import json
 import falcon
+from eliot import log_call, start_action
 from jupyterhubutils import LoggableChild
 
 
 class New(LoggableChild):
 
+    @log_call
     def on_post(self, req, resp):
         '''Handle the request to create a new Workflow.
         The POST body will be JSON-encoded (enforced by Falcon middleware)
@@ -39,6 +41,7 @@ class New(LoggableChild):
             raise falcon.HTTPInternalServerError(
                 description="No workflow created")
 
+    @log_call
     def _validate_input(self, data):
         '''Raises an exception if the posted data does not conform to
         expectations.
@@ -81,8 +84,9 @@ class New(LoggableChild):
                 description="'size' must be a string from '{}'!".format(szl))
 
     def make_workflow(self, data):
-        wm = self.parent.lsst_mgr.workflow_mgr
-        # There might be no namespace at all, in which case, list_workflows
-        #  returns None
-        wf = wm.submit_workflow(data)
-        return wf
+        with start_action(action_type="make_workflow"):
+            wm = self.parent.lsst_mgr.workflow_mgr
+            # There might be no namespace at all, in which case, list_workflows
+            #  returns None
+            wf = wm.submit_workflow(data)
+            return wf

@@ -1,6 +1,7 @@
 import json
 import os
 import requests
+from eliot import log_call
 from json.decoder import JSONDecodeError
 from jupyterhubutils import Loggable
 
@@ -41,11 +42,13 @@ class Client(Loggable):
         if not self.data and self.post_json_file:
             self.load_data()
 
+    @log_call
     def make_headers(self):
         self.headers = {"{}".format(self.auth_header_name): "bearer {}".format(
             self.access_token),
             "Content-Type": "application/json"}
 
+    @log_call
     def make_request(self, path=None, verb="GET"):
         verb = verb.upper()
         data = self.data
@@ -77,34 +80,44 @@ class Client(Loggable):
             self.log.error("Response was: {}".format(response.text))
             self.last_response = None
 
+    @log_call
     def load_data(self):
         with open(self.post_json_file, 'r') as f:
             self.data = json.load(f)
         self.log.debug("Loaded data: {}".format(self.data))
 
+    @log_call
     def list(self):
         self.make_request()
 
+    @log_call
     def new(self):
         self.make_request(verb="POST", path="new")
 
+    @log_call
     def version(self):
         self.make_request(path="version")
 
+    @log_call
     def delete(self, wf_id):
         self.make_request(verb="DELETE", path="workflow/{}".format(wf_id))
 
+    @log_call
     def inspect(self, wf_id):
         self.make_request(path="workflow/{}".format(wf_id))
 
+    @log_call
     def logs(self, wf_id):
         self.make_request(path="workflow/{}/logs".format(wf_id))
 
+    @log_call
     def pods(self, wf_id):
         self.make_request(path="workflow/{}/pods".format(wf_id))
 
+    @log_call
     def details(self, wf_id, pod_id):
         self.make_request(path="workflow/{}/details/{}".format(wf_id, pod_id))
 
+    @log_call
     def show_response(self):
         print(json.dumps(self.last_response, sort_keys=True, indent=4))
