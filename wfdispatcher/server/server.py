@@ -46,7 +46,7 @@ class Server(Loggable):
         self.authenticator = AM(parent=self, _mock=_mock,
                                 verify_signature=verify_signature,
                                 verify_audience=verify_audience)
-        self.spawner = MockSpawner(parent=self)
+        self.spawner = MockSpawner(parent=self, user=self.authenticator.user)
         self.lsst_mgr.optionsform_mgr._make_sizemap()
         self.lsst_mgr.spawner = self.spawner
         self.lsst_mgr.volume_mgr.make_volumes_from_config()
