@@ -9,7 +9,7 @@ class MockSpawner(LoggableChild):
                                                   True)
         user = kwargs.pop('user', None)
         if not user:
-            authenticator = parent.get('authenticator', None)
+            authenticator = self.parent.get('authenticator', None)
             if authenticator:
                 user = authenticator.get('user')
         self.user = user
