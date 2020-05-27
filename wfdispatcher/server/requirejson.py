@@ -1,10 +1,8 @@
 import falcon
-from eliot import log_call
 
 
 class RequireJSONMiddleware(object):
 
-    @log_call
     def process_request(self, req, resp):
         if not req.client_accepts_json:
             raise falcon.HTTPNotAcceptable(

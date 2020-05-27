@@ -1,9 +1,7 @@
-import datetime
 import falcon
 from eliot import log_call, start_action
-from jose import jwt
 from jupyterhubutils import LoggableChild
-from jupyterhubutils.utils import get_execution_namespace
+from jupyterhubutils.utils import get_execution_namespace, parse_access_token
 from urllib.parse import quote
 from ..helpers.make_mock_user import make_mock_user
 from ..user.user import User
@@ -17,40 +15,18 @@ def get_default_namespace():
 
 
 class AuthenticatorMiddleware(LoggableChild):
-    auth_header_name = 'X-Portal-Authorization'
-    username_claim_field = 'uid'
-    verify_signature = True
-    verify_audience = True
-    parent = None
-    user = None
-    token = None
-    _secret = None
-    _mock = False
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        self.parent = None
+        self.token = None
+        super().__init__(*args, **kwargs)  # Sets self.parent
         self.log.debug("Creating Authenticator.")
-        _mock = kwargs.pop('_mock', self._mock)
-        self._mock = _mock
+        self._mock = kwargs.pop('_mock', False)
         if self._mock:
             self.log.warning("Auth mocking enabled.")
-        else:
-            verify_signature = kwargs.pop(
-                'verify_signature', self.verify_signature)
-            self.verify_signature = verify_signature
-            if not verify_signature:
-                self.log.warning("Not verifying signature.")
-            verify_audience = kwargs.pop(
-                'verify_audience', self.verify_audience)
-            self.verify_audience = verify_audience
-            if not verify_audience:
-                self.log.warning("Not verifying audience.")
-        auth_header_name = kwargs.pop(
-            'auth_header_name', self.auth_header_name)
-        self.auth_header_name = auth_header_name
-        username_claim_field = kwargs.pop(
-            'username_claim_field', self.username_claim_field)
-        self.username_claim_field = username_claim_field
+        self.auth_header_name = kwargs.pop('auth_header_name',
+                                           'X-Portal-Authorization')
+        self.username_claim_field = kwargs.pop('username_claim_field', 'uid')
 
     @log_call
     def process_request(self, req, resp):
@@ -58,6 +34,7 @@ class AuthenticatorMiddleware(LoggableChild):
         if self._mock:
             # Pretend we had a token and create mock user
             self.user = make_mock_user()
+            self.log.debug("Mocked out process_request")
             return
         auth_hdr = req.get_header(self.auth_header_name)
         challenges = ['bearer "JWT"']
@@ -74,14 +51,11 @@ class AuthenticatorMiddleware(LoggableChild):
                                           'Auth header must be "bearer".',
                                           challenges)
         token = auth_hdr.split()[1]
-        claims = self.verify_jwt(token)
-        if not claims:
-            raise falcon.HTTPForbidden('Could not verify JWT')
-        # Check expiration
-        expiry = int(claims['exp'])
-        now = int(datetime.datetime.utcnow().timestamp())
-        if now > expiry:
-            raise falcon.HTTPForbidden('JWT has expired')
+        try:
+            claims = parse_access_token(token=token)
+        except (RuntimeError, KeyError) as exc:
+            raise falcon.HTTPForbidden(
+                'Failed to verify JWT claims: {}'.format(exc))
         # Update user
         #  Yes, it's wasteful to do this each time, but since the user
         #  has no ORM backing it, it's a little bit of computation and some
@@ -101,32 +75,9 @@ class AuthenticatorMiddleware(LoggableChild):
         else:
             return "{}-{}".format(def_ns, self.user.escaped_name)
 
-    @log_call
-    def verify_jwt(self, token):
-        cfg = self.parent.lsst_mgr.config
-        cert = cfg.jwt_signing_certificate
-        aud = cfg.audience
-        v_c = self.verify_signature
-        v_a = self.verify_audience
-        secret = None
-        opts = {}
-        if not v_a:
-            opts["verify_aud"] = False
-        # We do cache the signing certificate, to keep this routine
-        #  from having to do I/O from disk (potentially, although in practice
-        #  it'd end up in disk cache pretty quickly) on every access.
-        if v_c:
-            if not self._secret:
-                with open(cert, 'r') as f:
-                    secret = f.read()
-                    self._secret = secret
-        else:
-            opts["verify_signature"] = False
-        return jwt.decode(token, self._secret, audience=aud, options=opts)
-
     def _make_user_from_claims(self, claims):
         with start_action(action_type="_make_user_from_claims"):
-            username = claims[self.username_claim_field]
+            username = claims[self.username_claim_field].lower()
             if '@' in username:
                 # Process as if email and use localpart equivalent
                 username = username.split('@')[0]

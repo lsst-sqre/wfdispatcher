@@ -3,20 +3,21 @@ import os
 import requests
 from eliot import log_call
 from json.decoder import JSONDecodeError
-from jupyterhubutils import Loggable
+from jupyterhubutils import Loggable, get_access_token
 
 
 class Client(Loggable):
-    access_token = None
-    auth_header_name = 'X-Portal-Authorization'
-    env_var_name = 'ACCESS_TOKEN'
-    api_url = "http://localhost:8080/"
-    headers = {}
-    last_response = None
-    data = None
-    post_json_file = None
 
     def __init__(self, *args, **kwargs):
+        self.access_token = None
+        self.auth_header_name = 'X-Portal-Authorization'
+        self.env_var_name = 'ACCESS_TOKEN'
+        self.api_url = "http://localhost:8080/"
+        self.headers = {}
+        self.last_response = None
+        self.data = None
+        self.post_json_file = None
+
         super().__init__(*args, **kwargs)
         auth_header_name = kwargs.pop(
             'auth_header_name', self.auth_header_name)
@@ -25,9 +26,10 @@ class Client(Loggable):
         self.env_var_name = env_var_name
         access_token = kwargs.pop('access_token', self.access_token)
         if not access_token:
-            access_token = os.getenv(env_var_name)
+            tokenfile = kwargs.pop('tokenfile', None)
+            access_token = get_access_token(tokenfile=tokenfile)
         if not access_token:
-            raise EnvironmentError("{} is not set!".format(self.env_var_name))
+            raise RuntimeError("Could not determine access token!")
         self.access_token = access_token
         self.make_headers()
         api_url = kwargs.pop('api_url', self.api_url)
@@ -57,6 +59,7 @@ class Client(Loggable):
         if verb == "POST":
             if data is None:
                 raise ValueError("Data for POST cannot be None!")
+            data['access_token'] = self.access_token
         else:
             data = None
         url = "{}{}".format(self.api_url, path)
@@ -67,7 +70,10 @@ class Client(Loggable):
             h_copy[self.auth_header_name] = "bearer [REDACTED]"
         dstr += "with headers {}".format(h_copy)
         if data:
-            dstr += " and data '{}'".format(json.dumps(data, sort_keys=True,
+            d_copy = {}
+            d_copy.update(data)
+            d_copy['access_token'] = "[REDACTED]"
+            dstr += " and data '{}'".format(json.dumps(d_copy, sort_keys=True,
                                                        indent=4))
         self.log.debug(dstr)
         response = requests.request(

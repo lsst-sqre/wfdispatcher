@@ -16,36 +16,21 @@ from jupyterhubutils import Loggable, LSSTConfig, LSSTMiddleManager
 
 
 class Server(Loggable):
-    config = None
-    verify_signature = True
-    verify_audience = True
-    authenticator = None
-    app = None
-    lsst_mgr = None
-    spawner = None
-    _mock = False
 
     def __init__(self, *args, **kwargs):
+        self.config = None
+        self.authenticator = None
+        self.app = None
+        self.lsst_mgr = None
+        self.spawner = None
         super().__init__(*args, **kwargs)
         self.lsst_mgr = LSSTMiddleManager(parent=self, config=LSSTConfig())
         self.lsst_mgr.env_mgr.create_pod_env()
-        _mock = kwargs.pop('_mock', self._mock)
+        _mock = kwargs.pop('_mock', False)
         self._mock = _mock
         if _mock:
             self.log.warning("Running with auth mocking enabled.")
-        verify_signature = kwargs.pop('verify_signature',
-                                      self.verify_signature)
-        self.verify_signature = verify_signature
-        if not verify_signature:
-            self.log.warning("Running with signature verification disabled.")
-        verify_audience = kwargs.pop('verify_audience',
-                                     self.verify_audience)
-        self.verify_audience = verify_audience
-        if not verify_audience:
-            self.log.warning("Running with audience verification disabled.")
-        self.authenticator = AM(parent=self, _mock=_mock,
-                                verify_signature=verify_signature,
-                                verify_audience=verify_audience)
+        self.authenticator = AM(parent=self, _mock=_mock)
         self.spawner = MockSpawner(parent=self)
         self.lsst_mgr.optionsform_mgr._make_sizemap()
         self.lsst_mgr.spawner = self.spawner
