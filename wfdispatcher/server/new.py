@@ -20,7 +20,7 @@ class New(LoggableChild):
                       only relevant with type cmd> ],
 
           image: <nublado image str, e.g. 'lsstsqre/sciplat-lab:w_2020_01'>,
-          size: <str from form_sizelist in LSSTConfig>
+          size: <str from form_sizelist in LSSTConfig>,
         }
 
         The first three parameters will be passed in to the spawned
@@ -34,6 +34,9 @@ class New(LoggableChild):
             json.dumps(data, sort_keys=True, indent=4)))
         self._validate_input(data)
         # If we got here, it's syntactically valid
+        # Glue in the token.
+        # The authenticator should set it on every received request.
+        data['access_token'] = self.parent.authenticator.token
         wf = self.make_workflow(data)
         if wf:
             resp.media = {"name": wf.metadata.name}
