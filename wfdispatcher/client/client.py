@@ -1,5 +1,4 @@
 import json
-import os
 import requests
 from eliot import log_call
 from json.decoder import JSONDecodeError

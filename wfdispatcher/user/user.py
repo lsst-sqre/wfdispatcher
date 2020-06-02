@@ -14,14 +14,15 @@ class User(object):
 
     However, unlike the JupyterHub User, there's no backing ORM.
 
-    Set these attributes when you create the User object and then leave them
-    alone.  That's why we omit the set_auth_state() coroutine.
+    Set these attributes immediately after creating the User object and
+    then leave them alone.
     '''
 
-    name = None
-    escaped_name = None
-    groups = []
-    auth_state = {}
+    def __init__(self, *args, **kwargs):
+        self.name = None
+        self.escaped_name = None
+        self.groups = []
+        self.auth_state = {}
 
     async def get_auth_state(self):
         return self.auth_state
