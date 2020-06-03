@@ -2,6 +2,7 @@ from jupyterhubutils import LoggableChild
 from argo.workflows.sdk._utils import sanitize_for_serialization
 from eliot import log_call
 from falcon import HTTPNotFound
+from ..objects.workflowmanager import LSSTWorkflowManager
 
 
 class Details(LoggableChild):
@@ -10,8 +11,7 @@ class Details(LoggableChild):
     def on_get(self, req, resp, wf_id, pod_id):
         self.log.debug("Getting details for pod '{}' in workflow '{}'".format(
             pod_id, wf_id))
-        lm = self.parent.lsst_mgr
-        wm = lm.workflow_mgr
+        wm = LSSTWorkflowManager(req=req)
         wf = wm.get_workflow(wf_id)
         if not wf:
             raise HTTPNotFound()
