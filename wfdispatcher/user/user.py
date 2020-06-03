@@ -1,28 +1,47 @@
-import asyncio
+import json
+from urllib.parse import quote
 
 
 class User(object):
-    '''This looks, not coincidentally, like the JupyterHub User object.
+    '''This looks a little like the JupyterHub User object, but is not one.
 
-    That means it has the following attributes:
+    It has the following attributes:
       name (str)
       escaped_name (str)
-      groups (list)
-      auth_state (dict)
-      get_auth_state (coroutine)
-      set_auth_state (coroutine) is OMITTED
+      namespace (str)
+      uid (int)
+      access_token (str)
+      claims (dict)
 
     However, unlike the JupyterHub User, there's no backing ORM.
 
-    Set these attributes immediately after creating the User object and
-    then leave them alone.
+    The only place we substitute one of these for a JupyterHub User is in
+    create_workflow, and we only use the escaped_name field for it.
     '''
 
     def __init__(self, *args, **kwargs):
-        self.name = None
-        self.escaped_name = None
-        self.groups = []
-        self.auth_state = {}
+        self.name = kwargs.pop('name', None)
+        if self.name:
+            self.escaped_name = quote(self.name)
+        self.namespace = kwargs.pop('namespace', None)
+        self.uid = kwargs.pop('uid', None)
+        self.access_token = kwargs.pop('access_token', None)
+        self.claims = kwargs.pop('claims', None)
 
-    async def get_auth_state(self):
-        return self.auth_state
+    def dump(self):
+        rv = {
+            "name": self.name,
+            "escaped_name": self.escaped_name,
+            "namespace": self.namespace,
+            "uid": self.uid,
+            "access_token": "<REDACTED>"
+        }
+        cc = {}.update(self.claims)
+        tok = cc.get('access_token', None)
+        if tok:
+            cc['access_token'] = "<REDACTED>"
+        rv["claims"] = cc
+        return rv
+
+    def toJSON(self):
+        return json.dumps(self.dump())

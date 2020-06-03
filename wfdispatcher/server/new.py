@@ -1,7 +1,8 @@
 import json
 import falcon
 from eliot import log_call, start_action
-from jupyterhubutils import LoggableChild
+from jupyterhubutils import LoggableChild, LSSTMiddleManager, LSSTConfig
+from ..objects.workflowmanager import LSSTWorkflowManager
 
 
 class New(LoggableChild):
@@ -34,10 +35,7 @@ class New(LoggableChild):
             json.dumps(data, sort_keys=True, indent=4)))
         self._validate_input(data)
         # If we got here, it's syntactically valid
-        # Glue in the token.
-        # The authenticator should set it on every received request.
-        data['access_token'] = self.parent.authenticator.token
-        wf = self.make_workflow(data)
+        wf = self.make_workflow(req, data)
         if wf:
             resp.media = {"name": wf.metadata.name}
         else:
@@ -81,15 +79,14 @@ class New(LoggableChild):
         if not image:
             raise ue("No image specified for container!")
         sz = data.get('size')
-        szl = self.parent.lsst_mgr.config.form_sizelist
+        lm = LSSTMiddleManager(parent=self, config=LSSTConfig())
+        szl = lm.config.form_sizelist
         if type(sz) is not str or sz not in szl:
             raise ue(
                 description="'size' must be a string from '{}'!".format(szl))
 
-    def make_workflow(self, data):
+    def make_workflow(self, req, data):
         with start_action(action_type="make_workflow"):
-            wm = self.parent.lsst_mgr.workflow_mgr
-            # There might be no namespace at all, in which case, list_workflows
-            #  returns None
+            wm = LSSTWorkflowManager(req=req)
             wf = wm.submit_workflow(data)
             return wf

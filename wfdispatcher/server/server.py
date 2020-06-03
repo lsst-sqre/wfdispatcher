@@ -12,29 +12,20 @@ from .logs import Logs
 from .pods import Pods
 from .singleworkflow import SingleWorkflow
 from .version import Version
-from jupyterhubutils import Loggable, LSSTConfig, LSSTMiddleManager
+from jupyterhubutils import Loggable
 
 
 class Server(Loggable):
 
     def __init__(self, *args, **kwargs):
-        self.config = None
-        self.authenticator = None
         self.app = None
-        self.lsst_mgr = None
-        self.spawner = None
         super().__init__(*args, **kwargs)
-        self.lsst_mgr = LSSTMiddleManager(parent=self, config=LSSTConfig())
-        self.lsst_mgr.env_mgr.create_pod_env()
         _mock = kwargs.pop('_mock', False)
         self._mock = _mock
         if _mock:
             self.log.warning("Running with auth mocking enabled.")
-        self.authenticator = AM(parent=self, _mock=_mock)
         self.spawner = MockSpawner(parent=self)
-        self.lsst_mgr.optionsform_mgr._make_sizemap()
-        self.lsst_mgr.spawner = self.spawner
-        self.lsst_mgr.volume_mgr.make_volumes_from_config()
+        self.authenticator = AM(parent=self)
         self.app = falcon.API(middleware=[
             self.authenticator,
             RequireJSONMiddleware()
@@ -46,6 +37,7 @@ class Server(Loggable):
         logs = Logs(parent=self)
         new = New(parent=self)
         details = Details(parent=self)
+        self.workflows = {}
         self.app.add_route('/', ll)
         self.app.add_route('/workflow', ll)
         self.app.add_route('/workflow/', ll)
