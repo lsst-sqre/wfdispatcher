@@ -1,4 +1,4 @@
-from eliot import log_call
+from eliot import start_action
 from jupyterhubutils import LoggableChild
 from ..helpers.make_mock_user import make_mock_user
 from ..helpers.extract_user_from_req import extract_user_from_req
@@ -19,15 +19,15 @@ class AuthenticatorMiddleware(LoggableChild):
         self.username_claim_field = kwargs.pop('username_claim_field', 'uid')
         self.users = {}
 
-    @log_call
     def process_request(self, req, resp):
         '''Get auth token from request.  Raise if it does not validate.'''
-        if self._mock:
-            # Pretend we had a token and create mock user
-            self.user = make_mock_user()
-            self.log.debug("Mocked out process_request")
-            return
-        user = extract_user_from_req(req, self.auth_header_name,
-                                     self.username_claim_field)
-        uid = user.uid
-        self.users[uid] = user
+        with start_action(action_type="process_request/extract_auth"):
+            if self._mock:
+                # Pretend we had a token and create mock user
+                self.user = make_mock_user()
+                self.log.debug("Mocked out process_request")
+                return
+            user = extract_user_from_req(req, self.auth_header_name,
+                                         self.username_claim_field)
+            uid = user.uid
+            self.users[uid] = user

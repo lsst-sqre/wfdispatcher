@@ -4,17 +4,20 @@ import os
 from argo.workflows.client import V1alpha1Api
 from argo.workflows.config import load_kube_config, load_incluster_config
 from kubernetes.config.config_exception import ConfigException
-from argo.workflows.sdk import Workflow, template
-# This is just a K8s V1Container.
-from argo.workflows.sdk.templates import V1Container
+from kubernetes.config import load_kube_config as load_ckube_config
+from kubernetes.config import load_incluster_config as load_cincluster_config
 from eliot import start_action
-from kubernetes.client import V1ResourceRequirements, V1SecurityContext
+from kubernetes.client import (V1ResourceRequirements, V1SecurityContext,
+                               V1Container, CoreV1Api, V1ConfigMapVolumeSource,
+                               V1Volume, V1VolumeMount, V1ConfigMap,
+                               V1ObjectMeta)
 from kubernetes.client.rest import ApiException
-from kubernetes import client
 from jupyterhubutils import Loggable, LSSTMiddleManager, LSSTConfig
 from jupyterhubutils.utils import list_digest, str_true, assemble_gids
+from urllib3.exceptions import MaxRetryError
 from ..helpers.extract_user_from_req import extract_user_from_req
 from ..spawner.spawner import MockSpawner
+from ..auth.auth import AuthenticatorMiddleware as AM
 
 
 class LSSTWorkflowManager(Loggable):
@@ -41,23 +44,40 @@ class LSSTWorkflowManager(Loggable):
         auth_header_name = kwargs.pop('auth_header_name',
                                       'X-Portal-Authorization')
         username_claim_field = kwargs.pop('username_claim_field', 'uid')
+        self.run_as_user = kwargs.pop('run_as_user', 769)
+        self.run_as_group = kwargs.pop('run_as_group', 769)
         self.user = extract_user_from_req(
             req, auth_header_name, username_claim_field)
         if not self.user:
             raise RuntimeError("Could not determine user from request!")
+        self.log.debug(
+            "Creating new workflow manager with user '{}'".format(
+                self.user.escaped_name))
+        self.core_api = self._get_corev1api()
+        self.wf_api = self._get_wf_api()
+
+    def _get_corev1api(self):
+        self.log.debug("Loading K8s core config.")
         try:
-            load_incluster_config()
-            argo.workflows.config.load_incluster_config()
+            load_cincluster_config()
+            self.log.debug("K8s core in-cluster config loaded.")
         except ConfigException:
-            self.log.warning("In-cluster config failed! Falling back.")
-            try:
-                load_kube_config()
-                argo.workflows.config.load_kube_config()
-            except (ValueError, TypeError) as exc:
-                self.log.error("Still errored: {}".format(exc))
-                raise
-        self.api = V1alpha1Api()
-        self.coreapi = client.CoreV1Api()
+            self.log.warning("In-cluster core config failed! Falling back.")
+            load_ckube_config()  # Raise if this one fails.
+            self.log.debug("K8s core config loaded.")
+        return CoreV1Api()
+
+    def _get_wf_api(self):
+        self.log.debug("Loading K8s workflow config.")
+        try:
+            argo.workflows.config.load_incluster_config()
+            self.log.debug("K8s workflow in-cluster config loaded.")
+        except ConfigException:
+            self.log.warning(
+                "In-cluster workflow config failed! Falling back.")
+            argo.workflows.config.load_kube_config()
+            self.log.debug("K8s workflow config loaded.")
+        return V1alpha1Api()
 
     def define_configmap(self, data):
         '''This returns a k8s configmap using the data from the new-workflow
@@ -67,13 +87,13 @@ class LSSTWorkflowManager(Loggable):
             ni_cmd = data['command']
             idkey = list_digest(ni_cmd)
             cm_name = 'command.{}.json'.format(idkey)
-            k8s_vol = client.V1Volume(
+            k8s_vol = V1Volume(
                 name="noninteractive-command",
-                config_map=client.V1ConfigMapVolumeSource(
+                config_map=V1ConfigMapVolumeSource(
                     name=cm_name
                 ),
             )
-            k8s_mt = client.V1VolumeMount(
+            k8s_mt = V1VolumeMount(
                 name="noninteractive-command",
                 mount_path=("/opt/lsst/software/jupyterlab/" +
                             "noninteractive/command/"),
@@ -87,34 +107,47 @@ class LSSTWorkflowManager(Loggable):
             del cm_data['image']
             del cm_data['size']
             jd = json.dumps(data, sort_keys=True, indent=4)
-            k8s_configmap = client.V1ConfigMap(
-                metadata=client.V1ObjectMeta(name=cm_name),
+            k8s_configmap = V1ConfigMap(
+                metadata=V1ObjectMeta(name=cm_name),
                 data={'command.json': json.dumps(data)})
             self.log.debug("Created configmap '{}': {}".format(cm_name, jd))
             self.cfg_map = k8s_configmap
 
     def define_workflow(self, data):
         '''This is basically our equivalent of get_pod_manifest().
-        It creates a dict which we will pass to the workflow template
-        engine, which will allow it to create an appropriate workflow.
+        It creates a dict which we will pass to a method to create a
+        V1Container, which we will then wrap to create an appropriate
+        workflow.
         '''
         with start_action(action_type="define_workflow"):
+            self.log.debug(
+                "top of define_workflow self.user: {}".format(
+                    self.user.dump()))
             wf_input = {}
             # FIXME Right now we can assume data is of type 'cmd'; we need
             # a little tweaking for 'nb' in that the command will be fixed
             # and the execution parameters will differ.
-            lm = LSSTMiddleManager(parent=self, config=LSSTConfig())
+            lm = LSSTMiddleManager(parent=self,
+                                   config=LSSTConfig(),
+                                   user=self.user,
+                                   spawner=MockSpawner(parent=self),
+                                   authenticator=AM(parent=self))
             cfg = lm.config
             em = lm.env_mgr
             vm = lm.volume_mgr
             om = lm.optionsform_mgr
+            om._make_sizemap()
             # We use the user we created from the request that created the
             #  Workflow Manager.
+            self.log.debug(
+                "define_workflow post-middle-manager self.user: {}".format(
+                    self.user.dump()))
             username = self.user.name
             uid = self.user.uid
             gids = assemble_gids(self.user.claims["isMemberOf"])
             em.create_pod_env()
             em_env = em.get_env()
+            self.log.debug("Environment after em.get_env(): {}".format(em_env))
             size_map = om.sizemap.get(data['size'])
             if not size_map:
                 # Use default size
@@ -178,181 +211,84 @@ class LSSTWorkflowManager(Loggable):
             e_l = self._d2l(env)
             wf_input['env'] = e_l
             wf_input['username'] = username
+            wf_input['debug'] = cfg.debug
             # Volumes and mounts aren't JSON-serializable...
             wf_input['vols'] = '{}'.format(vols)
             wf_input['vmts'] = '{}'.format(vmts)
-            self.wf_input = wf_input
             self.log.debug("Input to Workflow Manipulator: {}".format(
                 json.dumps(wf_input, indent=4, sort_keys=True)))
             # ...now put the real values back
             wf_input['vols'] = vols
             wf_input['vmts'] = vmts
             wf_input['command'] = data['command']
-            self.wf_input = wf_input
-            wf = LSSTWorkflow(parms=wf_input)
-            self.log.debug("Workflow: {}".format(wf))
-            self.workflow = wf
+            manifest = self._create_manifest(wf_input)
+            self.workflow = manifest
 
-    def _d2l(self, in_d):
-        with start_action(action_type="_d2l"):
-            ll = []
-            for k in in_d:
-                ll.append({"name": k,
-                           "value": in_d[k]})
-            return ll
+    def _create_manifest(self, parms):
+        with start_action(action_type="_create_manifest"):
+            if not parms:
+                raise ValueError("parms are required to create workflow.")
+            container = V1Container(
+                command=["/opt/lsst/software/jupyterlab/provisionator.bash"],
+                args=[],
+                image=parms["image"],
+                name=parms["name"],
+                env=parms["env"],
+                image_pull_policy="Always",
+                volume_mounts=parms["vmts"],
+                resources=V1ResourceRequirements(
+                    limits={"memory": parms['mem_limit'],
+                            "cpu": parms['cpu_limit']},
+                    requests={"memory": parms['mem_guar'],
+                              "cpu": parms['cpu_guar']}
+                ),
+                security_context=V1SecurityContext(
+                    run_as_group=self.run_as_group,
+                    run_as_user=self.run_as_user,
+                )
+            )
+            lbl = {'argocd.argoproj.io/instance': 'nublado-users'}
+            annotations = self._create_annotations(parms)
+            manifest = {"apiVersion": "argoproj.io/v1alpha1",
+                        "kind": "Workflow",
+                        "metadata": {
+                            "labels": lbl,
+                            "name": None,
+                            "generateName": "{}-".format(parms['name']),
+                            "namespace": self.user.namespace,
+                            "annotations": annotations
+                        },
+                        "spec": {
+                            "entrypoint": "noninteractive",
+                            "namespace": self.user.namespace,
+                            "serviceAccountName": "{}-svcacct".format(
+                                parms['username']),
+                            "templates": [
+                                {"name": "noninteractive",
+                                 "container": container}
+                            ],
+                            "volumes": parms['vols']
+                        },
+                        "status": {},
+                        }
+            return manifest
 
-    def list_workflows(self):
-        with start_action(action_type="list_workflows"):
-            namespace = self.user.namespace
-            self.log.debug(
-                "Listing workflows in namespace '{}'".format(namespace))
-            nl = self.coreapi.list_namespace(timeout_seconds=3)
-            found = False
-            for ns in nl.items:
-                nsname = ns.metadata.name
-                if nsname == namespace:
-                    self.log.debug("Namespace {} found.".format(namespace))
-                    found = True
-                    break
-            if not found:
-                self.log.debug("No namespace {} found.".format(namespace))
-                wfs = None
-            else:
-                wfs = self.api.list_namespaced_workflows(namespace=namespace)
-            return wfs
-
-    def create_workflow(self):
-        with start_action(action_type="create_workflows"):
-            workflow = self.workflow
-            namespace = self.user.namespace
-            self.create_configmap()
-            self.log.debug(
-                "Creating workflow in namespace {}: '{}'".format(
-                    namespace, workflow))
-            wf = self.api.create_namespaced_workflow(namespace, workflow)
-            return wf
-
-    def create_configmap(self):
-        with start_action(action_type="create_configmap"):
-            api = self.coreapi  # Core, not Workflow
-            namespace = self.user.namespace
-            cfgmap = self.cfg_map
-            try:
-                self.log.info(
-                    "Attempting to create configmap in {}".format(namespace))
-                api.create_namespaced_config_map(namespace, cfgmap)
-            except ApiException as e:
-                if e.status != 409:
-                    estr = "Create configmap failed: {}".format(e)
-                    self.log.exception(estr)
-                    raise
-                else:
-                    self.log.info("Configmap already exists.")
-
-    def submit_workflow(self, data):
-        with start_action(action_type="submit_workflow"):
-            self.define_workflow(data)
-            user = self.user
-            self.log.debug("submit_workflow user class: {}".format(
-                user.__class__.__name__))
-            self.log.debug(
-                "submit_workflow username: {}".format(user.escaped_name))
-            lm = LSSTMiddleManager(parent=self, config=LSSTConfig())
-            lm.user = self.user  # Only works because JupyterHub Users and
-            # our users both have escaped_name fields
-            nm = lm.namespace_mgr
-            nm.namespace = user.namespace
-            lm.spawner = MockSpawner()
-            nm.ensure_namespace()
-            nm.ensure_namespaced_service_account()
-            wf = self.create_workflow()
-            return wf
-
-    def delete_workflow(self, wfid):
-        with start_action(action_type="delete_workflow"):
-            namespace = self.user.namespace
-            api = self.api
-            wf = api.delete_namespaced_workflow(namespace, wfid)
-            return wf
-
-    def get_workflow(self, wfid):
-        with start_action(action_type="get_workflow"):
-            namespace = self.user.namespace
-            api = self.api
-            wf = api.get_namespaced_workflow(namespace, wfid)
-            return wf
-
-    def get_logs(self, wf_id):
-        wf = self.get_workflow(wf_id)
-        if not wf:
-            self.log.debug("No workflow '{}' found".format(wf_id))
-            return None
-        namespace = self.user.namespace
-        nd = wf.status.nodes
-        loglist = []
-        for pod_id in nd:
-            self.log.debug("Getting logs for '{}' in namespace '{}'".format(
-                pod_id, namespace))
-            logs = self.coreapi.read_namespaced_pod_log(pod_id, namespace,
-                                                        container='main')
-            loglist.append({'name': pod_id,
-                            'logs': logs})
-        return loglist
-
-    def dump(self):
-        '''Return contents dict for aggregation and pretty-printing.
-        '''
-        wd = {
-            "cmd_vol": str(self.cmd_vol),
-            "workflow": str(self.workflow),
-            "cfg_map": self.cfg_map,
-            "wf_input": self.wf_input,
-            "user": self.user.dump()
-        }
-        return wd
-
-    def toJSON(self):
-        return json.dumps(self.dump())
-
-
-class LSSTWorkflow(Workflow):
-    '''Class to represent LSST Workflow.
-    '''
-
-    entrypoint = "noninteractive"  # Actually a class variable.
-    # see https://pypi.org/project/argo-workflows-sdk/
-
-    def __init__(self, *args, **kwargs):
-        self.parms = kwargs.pop('parms', {})
-        self.run_as_user = kwargs.pop('run_as_user', 769)
-        self.run_as_group = kwargs.pop('run_as_group', 769)
-        super().__init__(*args, **kwargs)
-        self.spec.volumes = self.parms['vols']
-        lbl = {'argocd.argoproj.io/instance': 'nublado-users'}
-        self.metadata.labels = lbl
-        self.metadata.generate_name = self.parms['name'] + '-'
-        self.metadata.name = None
-        username = self.parms['username']
-        account = "{}-svcacct".format(username)
-        self.spec.service_account_name = account
-        self.metadata.annotations = self.build_annotations()
-
-    def build_annotations(self):
+    def _create_annotations(self, parms):
         '''Add annotations telling Argo CD to not prune these resources or to
         count them against the sync state.
         '''
-        with start_action(action_type="build_annotations"):
+        with start_action(action_type="create_annotations"):
             anno = {}
             anno['argocd.argoproj.io/compare-options'] = 'IgnoreExtraneous'
             anno['argocd.argoproj.io/sync-options'] = 'Prune=false'
 
             # Enable multus if requested
-            if self.parms['enable_multus']:
+            if parms['enable_multus']:
                 ks = 'kube-system/macvlan-conf'
                 # This probably ought to be a config parameter
                 anno['k8s.v1.cni.cncf.io/networks'] = ks
 
-            cmdlist = self.parms['command']
+            cmdlist = parms['command']
             if not cmdlist:
                 return anno
             annobase = "lsst.org/wf_cmd"
@@ -369,36 +305,132 @@ class LSSTWorkflow(Workflow):
                         skey = akey + "_{}".format(jdx)
                         anno[skey] = chunk
                         jdx = jdx+1
-                    idx = idx + 1
+                idx = idx + 1
             return anno
 
-    @template
-    def noninteractive(self) -> V1Container:
-        with start_action(action_type="noninteractive_container"):
-            container = V1Container(
-                command=["/opt/lsst/software/jupyterlab/provisionator.bash"],
-                args=[],
-                image=self.parms["image"],
-                name=self.parms["name"],
-                env=self.parms["env"],
-                image_pull_policy="Always",
-                volume_mounts=self.parms["vmts"],
-                resources=V1ResourceRequirements(
-                    limits={"memory": self.parms['mem_limit'],
-                            "cpu": self.parms['cpu_limit']},
-                    requests={"memory": self.parms['mem_guar'],
-                              "cpu": self.parms['cpu_guar']}
-                ),
-                security_context=V1SecurityContext(
-                    run_as_group=self.run_as_group,
-                    run_as_user=self.run_as_user,
-                )
-            )
-            self.volumes = self.parms['vols']
-            lbl = {'argocd.argoproj.io/instance': 'nublado-users'}
-            self.metadata.labels = lbl
-            self.metadata.generate_name = self.parms['name'] + '-'
-            self.metadata.name = None
-            self.service_account_name = self.parms['username'] + '-svcacct'
+    def _d2l(self, in_d):
+        with start_action(action_type="_d2l"):
+            ll = []
+            for k in in_d:
+                ll.append({"name": k,
+                           "value": in_d[k]})
+            return ll
 
-            return container
+    def list_workflows(self):
+        with start_action(action_type="list_workflows"):
+            namespace = self.user.namespace
+            api = self.core_api
+            self.log.debug(
+                "Listing workflows in namespace '{}'".format(namespace))
+            nl = api.list_namespace(timeout_seconds=3)
+            for ns in nl.items:
+                nsname = ns.metadata.name
+                if nsname == namespace:
+                    self.log.debug("Namespace {} found.".format(namespace))
+                    found = True
+                    break
+            if not found:
+                self.log.debug("No namespace {} found.".format(namespace))
+                wfs = None
+            else:
+                wf_api = self.wf_api
+                wfs = wf_api.list_namespaced_workflows(namespace=namespace)
+            return wfs
+
+    def create_workflow(self):
+        with start_action(action_type="create_workflows"):
+            workflow = self.workflow
+            namespace = self.user.namespace
+            self.create_configmap()
+            self.log.debug(
+                "Creating workflow in namespace {}: '{}'".format(
+                    namespace, workflow))
+            wf_api = self.wf_api
+            wf = wf_api.create_namespaced_workflow(namespace, workflow)
+            return wf
+
+    def create_configmap(self):
+        with start_action(action_type="create_configmap"):
+            namespace = self.user.namespace
+            cfgmap = self.cfg_map
+            api = self.core_api
+            try:
+                self.log.info(
+                    "Attempting to create configmap in {}".format(namespace))
+                api.create_namespaced_config_map(namespace, cfgmap)
+            except ApiException as e:
+                if e.status != 409:
+                    estr = "Create configmap failed: {}".format(e)
+                    self.log.exception(estr)
+                    raise
+                else:
+                    self.log.info("Configmap already exists.")
+
+    def submit_workflow(self, data):
+        with start_action(action_type="submit_workflow"):
+            self.define_workflow(data)  # sets self.workflow
+            user = self.user
+            self.log.debug("submit_workflow user class: {}".format(
+                user.__class__.__name__))
+            self.log.debug(
+                "submit_workflow username: {}".format(user.escaped_name))
+            lm = LSSTMiddleManager(parent=self, config=LSSTConfig())
+            lm.user = self.user  # Only works because JupyterHub Users and
+            # our users both have escaped_name fields
+            nm = lm.namespace_mgr
+            nm.namespace = user.namespace
+            lm.spawner = MockSpawner()
+            qm = lm.quota_mgr
+            om = lm.optionsform_mgr
+            om._make_sizemap()  # Guess it should be a public method.
+            qm.define_resource_quota_spec()
+            nm.ensure_namespace()
+            nm.ensure_namespaced_service_account()
+            wf = self.create_workflow()
+            return wf
+
+    def delete_workflow(self, wfid):
+        with start_action(action_type="delete_workflow"):
+            namespace = self.user.namespace
+            api = self.wf_api
+            wf = api.delete_namespaced_workflow(namespace, wfid)
+            return wf
+
+    def get_workflow(self, wfid):
+        with start_action(action_type="get_workflow"):
+            namespace = self.user.namespace
+            api = self.wf_api
+            wf = api.get_namespaced_workflow(namespace, wfid)
+            return wf
+
+    def get_logs(self, wf_id):
+        wf = self.get_workflow(wf_id)
+        api = self.core_api
+        if not wf:
+            self.log.debug("No workflow '{}' found".format(wf_id))
+            return None
+        namespace = self.user.namespace
+        nd = wf.status.nodes
+        loglist = []
+        for pod_id in nd:
+            self.log.debug("Getting logs for '{}' in namespace '{}'".format(
+                pod_id, namespace))
+            logs = api.read_namespaced_pod_log(pod_id, namespace,
+                                               container='main')
+            loglist.append({'name': pod_id,
+                            'logs': logs})
+        return loglist
+
+    def dump(self):
+        '''Return contents dict for aggregation and pretty-printing.
+        '''
+        wd = {
+            "cmd_vol": str(self.cmd_vol),
+            "workflow": str(self.workflow),
+            "cfg_map": self.cfg_map,
+            "user": self.user.dump()
+        }
+        return wd
+
+    def toJSON(self):
+        return json.dumps(self.dump())
