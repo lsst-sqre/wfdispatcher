@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import logging
+import os
 from .client import Client
 
 
@@ -9,6 +10,15 @@ def standalone():
     '''
     allowed = ['list', 'create', 'delete', 'inspect', 'logs', 'pod',
                'details', 'version']
+    api_url = "http://localhost:8080/"
+    api_domain = os.getenv('JUPYTERHUB_NAMESPACE')
+    api_prefix = os.getenv('LSP_INSTANCE')
+    api_host = "localhost"
+    if api_domain:
+        api_host = "wf-api.{}".format(api_domain)
+        if api_prefix:
+            api_host = "{}-{}".format(api_prefix, api_host)
+    api_url = "http://{}:8080".format(api_host)
     parser = argparse.ArgumentParser(
         description="LSST Argo Workflow API Client")
     parser.add_argument("operation",
@@ -17,7 +27,7 @@ def standalone():
                               "'inspect', 'logs', 'pods', 'details', or " +
                               "'version')"))
     parser.add_argument("-u", "--url", help="Workflow API Server URL",
-                        default="http://localhost:8080/")
+                        default=api_url)
     parser.add_argument("-j", "--json", "--json-post-file",
                         help=("File containing POST body in JSON format " +
                               "(required for 'create')"))
