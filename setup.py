@@ -57,7 +57,7 @@ setuptools.setup(
         'jupyterhubutils>=0.22.0,<1.0.0',
         'wsgiserver>=1.3,<2.0.0',
         'falcon>=2.0.0,<3.0.0',
-        'pyyaml>=3.12,<4.0.0',
+        'pyyaml',
         'argo-workflows-sdk'
     ],
     entry_points={
