@@ -55,7 +55,7 @@ setuptools.setup(
         'requests>=2.0.0,<3.0.0',
         'semver>=2.0.0,<3.0.0',
         'jupyterhubutils>=0.22.0,<1.0.0',
-        'kubernetes>=10.0.0,<11.0.0'
+        'kubernetes>=10.0.0,<11.0.0',
         'wsgiserver>=1.3,<2.0.0',
         'falcon>=2.0.0,<3.0.0',
         'argo-workflows>=3.0.0,<4.0.0',
