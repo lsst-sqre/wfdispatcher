@@ -1,7 +1,7 @@
 from jupyterhubutils import LoggableChild
-from argo.workflows.sdk._utils import sanitize_for_serialization
 from eliot import log_call
 from falcon import HTTPNotFound
+from ..helpers.sanitize import sanitize
 from ..objects.workflowmanager import LSSTWorkflowManager
 
 
@@ -21,4 +21,4 @@ class Details(LoggableChild):
         pod = nd.get(pod_id)
         if not pod:
             raise HTTPNotFound()
-        resp.media = sanitize_for_serialization(pod)
+        resp.media = sanitize(pod)
