@@ -1,7 +1,7 @@
-from argo.workflows.sdk._utils import sanitize_for_serialization
 from eliot import log_call
 from falcon import HTTPNotFound
 from jupyterhubutils import LoggableChild
+from ..helpers.sanitize import sanitize
 from ..objects.workflowmanager import LSSTWorkflowManager
 
 
@@ -14,7 +14,7 @@ class SingleWorkflow(LoggableChild):
         wf = wm.get_workflow(wf_id)
         if not wf:
             raise HTTPNotFound()
-        resp.media = sanitize_for_serialization(wf)
+        resp.media = sanitize(wf)
 
     @log_call
     def on_delete(self, req, resp, wf_id):
