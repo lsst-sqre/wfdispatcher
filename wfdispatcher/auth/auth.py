@@ -9,6 +9,7 @@ class AuthenticatorMiddleware(LoggableChild):
     def __init__(self, *args, **kwargs):
         self.parent = None
         self.token = None
+        self.user = None
         super().__init__(*args, **kwargs)  # Sets self.parent
         self.log.debug("Creating Authenticator.")
         self._mock = kwargs.pop('_mock', False)
@@ -31,3 +32,4 @@ class AuthenticatorMiddleware(LoggableChild):
                                          self.username_claim_field)
             uid = user.uid
             self.users[uid] = user
+            self.user = user
