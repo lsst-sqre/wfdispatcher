@@ -133,7 +133,7 @@ class LSSTWorkflowManager(Loggable):
                                    config=LSSTConfig(),
                                    user=self.user,
                                    spawner=MockSpawner(parent=self),
-                                   authenticator=self.auth)
+                                   authenticator=AM(parent=self))
             lm.spawner.user = self.user
             cfg = lm.config
             em = lm.env_mgr
