@@ -2,19 +2,18 @@ import argo
 import json
 import os
 from argo.workflows.client import V1alpha1Api
-from argo.workflows.config import load_kube_config, load_incluster_config
 from kubernetes.config.config_exception import ConfigException
 from kubernetes.config import load_kube_config as load_ckube_config
 from kubernetes.config import load_incluster_config as load_cincluster_config
 from eliot import start_action
-from kubernetes.client import (V1ResourceRequirements, V1SecurityContext,
+from kubernetes.client import (V1ResourceRequirements, V1PodSecurityContext,
                                V1Container, CoreV1Api, V1ConfigMapVolumeSource,
                                V1Volume, V1VolumeMount, V1ConfigMap,
                                V1ObjectMeta)
 from kubernetes.client.rest import ApiException
 from jupyterhubutils import Loggable, LSSTMiddleManager, LSSTConfig
-from jupyterhubutils.utils import list_digest, str_true, assemble_gids
-from urllib3.exceptions import MaxRetryError
+from jupyterhubutils.utils import (list_digest, str_true, assemble_gids,
+                                   get_supplemental_gids)
 from ..helpers.extract_user_from_req import extract_user_from_req
 from ..spawner.spawner import MockSpawner
 from ..auth.auth import AuthenticatorMiddleware as AM
@@ -53,6 +52,9 @@ class LSSTWorkflowManager(Loggable):
         self.log.debug(
             "Creating new workflow manager with user '{}'".format(
                 self.user.escaped_name))
+        self.auth = AM(parent=self)
+        self.auth.process_request(req, None)  # Sets up authenticator's
+        # cached_auth_state
         self.core_api = self._get_corev1api()
         self.wf_api = self._get_wf_api()
 
@@ -131,7 +133,8 @@ class LSSTWorkflowManager(Loggable):
                                    config=LSSTConfig(),
                                    user=self.user,
                                    spawner=MockSpawner(parent=self),
-                                   authenticator=AM(parent=self))
+                                   authenticator=self.auth)
+            lm.spawner.user = self.user
             cfg = lm.config
             em = lm.env_mgr
             vm = lm.volume_mgr
@@ -144,7 +147,8 @@ class LSSTWorkflowManager(Loggable):
                     self.user.dump()))
             username = self.user.name
             uid = self.user.uid
-            gids = assemble_gids(self.user.claims["isMemberOf"])
+            claims = self.user.claims
+            gids = assemble_gids(claims)
             em.create_pod_env()
             em_env = em.get_env()
             self.log.debug("Environment after em.get_env(): {}".format(em_env))
@@ -175,12 +179,19 @@ class LSSTWorkflowManager(Loggable):
             # using the Dask proxy dashboard from inside a Workflow anyway.
             synth_jsp = '/nb/user/{}'.format(username)
             jsp = os.getenv('JUPYTERHUB_SERVER_PREFIX', synth_jsp)
+            lab_debug = data.get('debug')
+            if lab_debug:
+                lab_debug = True
+            else:
+                lab_debug = False
             wf_input['mem_limit'] = ml
             wf_input['mem_guar'] = mg
             wf_input['cpu_limit'] = str(cl)
             wf_input['cpu_guar'] = str(cg)
             wf_input['image'] = data['image']
             wf_input['enable_multus'] = cfg.enable_multus
+            wf_input['debug'] = lab_debug
+            wf_input['no_sudo'] = cfg.lab_no_sudo
             env = {}
             vols = []
             vmts = []
@@ -208,9 +219,12 @@ class LSSTWorkflowManager(Loggable):
             env['JUPYTERHUB_SERVER_PREFIX'] = jsp
             env['DEBUG'] = str_true(cfg.debug)
             env['ACCESS_TOKEN'] = self.user.access_token
+            if cfg.lab_no_sudo:
+                env['NO_SUDO'] = "TRUE"
             e_l = self._d2l(env)
             wf_input['env'] = e_l
             wf_input['username'] = username
+            wf_input['claims'] = claims
             wf_input['debug'] = cfg.debug
             # Volumes and mounts aren't JSON-serializable...
             wf_input['vols'] = '{}'.format(vols)
@@ -228,6 +242,17 @@ class LSSTWorkflowManager(Loggable):
         with start_action(action_type="_create_manifest"):
             if not parms:
                 raise ValueError("parms are required to create workflow.")
+            sec_ctx = V1PodSecurityContext(
+                run_as_group=self.run_as_group,
+                run_as_user=self.run_as_user,
+            )
+            if parms["no_sudo"]:
+                claims = parms['claims']
+                uid = int(claims['uidNumber'])
+                sec_ctx.run_as_user = uid
+                sec_ctx.run_as_group = uid
+                supp_grps = get_supplemental_gids(claims)
+                sec_ctx.supplemental_groups = supp_grps
             container = V1Container(
                 command=["/opt/lsst/software/jupyterlab/provisionator.bash"],
                 args=[],
@@ -242,10 +267,6 @@ class LSSTWorkflowManager(Loggable):
                     requests={"memory": parms['mem_guar'],
                               "cpu": parms['cpu_guar']}
                 ),
-                security_context=V1SecurityContext(
-                    run_as_group=self.run_as_group,
-                    run_as_user=self.run_as_user,
-                )
             )
             lbl = {'argocd.argoproj.io/instance': 'nublado-users'}
             annotations = self._create_annotations(parms)
@@ -261,6 +282,7 @@ class LSSTWorkflowManager(Loggable):
                         "spec": {
                             "entrypoint": "noninteractive",
                             "namespace": self.user.namespace,
+                            "securityContext": sec_ctx,
                             "serviceAccountName": "{}-svcacct".format(
                                 parms['username']),
                             "templates": [
@@ -374,12 +396,15 @@ class LSSTWorkflowManager(Loggable):
                 user.__class__.__name__))
             self.log.debug(
                 "submit_workflow username: {}".format(user.escaped_name))
-            lm = LSSTMiddleManager(parent=self, config=LSSTConfig())
-            lm.user = self.user  # Only works because JupyterHub Users and
+            lm = LSSTMiddleManager(parent=self,
+                                   config=LSSTConfig(),
+                                   user=user,
+                                   spawner=MockSpawner(parent=self),
+                                   authenticator=self.auth)
             # our users both have escaped_name fields
             nm = lm.namespace_mgr
             nm.namespace = user.namespace
-            lm.spawner = MockSpawner()
+            lm.spawner.user = user
             qm = lm.quota_mgr
             om = lm.optionsform_mgr
             om._make_sizemap()  # Guess it should be a public method.

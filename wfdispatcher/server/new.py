@@ -22,13 +22,16 @@ class New(LoggableChild):
 
           image: <nublado image str, e.g. 'lsstsqre/sciplat-lab:w_2020_01'>,
           size: <str from form_sizelist in LSSTConfig>,
+          no_sudo: <bool>,
+          debug: <bool>
         }
 
         The first three parameters will be passed in to the spawned
         container as a json file, specified in a configmap and mounted at
         /opt/lsst/software/jupyterlab/noninteractive/command/command.json .
 
-        The last two will be used to create the container itself.
+        The last four will be used to create the container itself.  The
+        booleans default to False if omitted.
         '''
         data = req.media
         self.log.debug("Received POST body: {}".format(
