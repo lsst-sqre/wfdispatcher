@@ -17,8 +17,8 @@ class User(object):
     However, unlike the JupyterHub User, there's no backing ORM.
 
     The only place we substitute one of these for a JupyterHub User is in
-    create_workflow, and we only use the escaped_name and groups fields
-    for that.  (Groups is indirect via the quota manager.)
+    create_workflow.  We use the escaped_name and groups fields for that.
+    (Groups is indirect via the quota manager.)
     '''
 
     def __init__(self, *args, **kwargs):

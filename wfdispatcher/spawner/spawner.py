@@ -8,3 +8,5 @@ class MockSpawner(object):
     def __init__(self, *args, **kwargs):
         self.enable_namespace_quotas = kwargs.pop(
             'enable_namespace_quotas', True)
+        self.user = None  # Volume manager will want user.escaped_name so
+        # we'd better update this before we ask for it.

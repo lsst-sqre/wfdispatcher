@@ -14,7 +14,6 @@ from kubernetes.client import (V1ResourceRequirements, V1SecurityContext,
 from kubernetes.client.rest import ApiException
 from jupyterhubutils import Loggable, LSSTMiddleManager, LSSTConfig
 from jupyterhubutils.utils import list_digest, str_true, assemble_gids
-from urllib3.exceptions import MaxRetryError
 from ..helpers.extract_user_from_req import extract_user_from_req
 from ..spawner.spawner import MockSpawner
 from ..auth.auth import AuthenticatorMiddleware as AM
@@ -132,6 +131,7 @@ class LSSTWorkflowManager(Loggable):
                                    user=self.user,
                                    spawner=MockSpawner(parent=self),
                                    authenticator=AM(parent=self))
+            lm.spawner.user = self.user
             cfg = lm.config
             em = lm.env_mgr
             vm = lm.volume_mgr
@@ -380,6 +380,7 @@ class LSSTWorkflowManager(Loggable):
             nm = lm.namespace_mgr
             nm.namespace = user.namespace
             lm.spawner = MockSpawner()
+            lm.spawner.user = user
             qm = lm.quota_mgr
             om = lm.optionsform_mgr
             om._make_sizemap()  # Guess it should be a public method.
