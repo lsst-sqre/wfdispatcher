@@ -19,6 +19,7 @@ class AuthenticatorMiddleware(LoggableChild):
                                            'X-Portal-Authorization')
         self.username_claim_field = kwargs.pop('username_claim_field', 'uid')
         self.users = {}
+        self.cached_auth_state = {}
 
     def process_request(self, req, resp):
         '''Get auth token from request.  Raise if it does not validate.'''
@@ -33,3 +34,8 @@ class AuthenticatorMiddleware(LoggableChild):
             uid = user.uid
             self.users[uid] = user
             self.user = user
+            self.cached_auth_state = {
+                'claims': user.claims,
+                'access_token': user.access_token,
+                'uid': int(user.claims['uidNumber'])
+            }
