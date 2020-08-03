@@ -52,9 +52,6 @@ class LSSTWorkflowManager(Loggable):
         self.log.debug(
             "Creating new workflow manager with user '{}'".format(
                 self.user.escaped_name))
-        self.auth = AM(parent=self)
-        self.auth.process_request(req, None)  # Sets up authenticator's
-        # cached_auth_state
         self.core_api = self._get_corev1api()
         self.wf_api = self._get_wf_api()
 
@@ -133,7 +130,8 @@ class LSSTWorkflowManager(Loggable):
                                    config=LSSTConfig(),
                                    user=self.user,
                                    spawner=MockSpawner(parent=self),
-                                   authenticator=self.auth)
+                                   authenticator=AM(parent=self))
+            lm.authenticator.set_auth_fields(self.user)
             lm.spawner.user = self.user
             cfg = lm.config
             em = lm.env_mgr
@@ -400,8 +398,8 @@ class LSSTWorkflowManager(Loggable):
                                    config=LSSTConfig(),
                                    user=user,
                                    spawner=MockSpawner(parent=self),
-                                   authenticator=self.auth)
-            # our users both have escaped_name fields
+                                   authenticator=AM(parent=self))
+            lm.authenticator.set_auth_fields(self.user)
             nm = lm.namespace_mgr
             nm.namespace = user.namespace
             lm.spawner.user = user
@@ -409,8 +407,9 @@ class LSSTWorkflowManager(Loggable):
             om = lm.optionsform_mgr
             om._make_sizemap()  # Guess it should be a public method.
             qm.define_resource_quota_spec()
-            nm.ensure_namespace()
-            nm.ensure_namespaced_service_account()
+            # Not setting up workflows with a daskconfig.  Might need to
+            #  in the future.
+            nm.ensure_namespace(namespace=user.namespace)
             wf = self.create_workflow()
             return wf
 
