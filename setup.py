@@ -51,14 +51,14 @@ setuptools.setup(
     ],
     keywords=['lsst', 'rubinobservatory', 'argo', 'workflow', 'jupyter'],
     install_requires=[
-        'requests>=2.0.0,<3.0.0',
-        'semver>=2.0.0,<3.0.0',
-        'jupyterhubutils>=0.24.1,<1.0.0',
-        'kubernetes>=11.0.0,<12.0.0',
-        'wsgiserver>=1.3,<2.0.0',
-        'falcon>=2.0.0,<3.0.0',
-        'argo-workflows>=3.2.0,<4.0.0',
-        'eliot'
+        'requests>=2,<3',
+        'semver>=2,<3',
+        'jupyterhubutils<1.0.0',
+        'kubernetes>=11',
+        'wsgiserver>=1.3,<2',
+        'falcon>=2,<3',
+        'argo-workflows>=3,<4',
+        'pyyaml>=5,<6',
     ],
     entry_points={
         'console_scripts': [
