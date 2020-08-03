@@ -24,8 +24,8 @@ def standalone():
     parser.add_argument("operation",
                         default="list",
                         help=("Operation (one of 'list', 'new', 'delete', " +
-                              "'inspect', 'logs', 'pods', 'details', or " +
-                              "'version')"))
+                              "'inspect', 'logs', 'rawlogs', 'pods', " +
+                              "'details', or 'version')"))
     parser.add_argument("-u", "--url", help="Workflow API Server URL",
                         default=api_url)
     parser.add_argument("-j", "--json", "--json-post-file",
@@ -76,6 +76,13 @@ def standalone():
         client.pods(wf)
     elif op == "details":
         client.details(wf, args.pod_id)
+    elif op == "rawlogs":
+        client.logs(wf)
+        # The output is not JSON: output it directly and do not call
+        #  show_response()
+        for entry in client.last_response:
+            print(entry['logs'])
+        return
     client.show_response()
 
 
