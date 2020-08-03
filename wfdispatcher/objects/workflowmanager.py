@@ -132,6 +132,7 @@ class LSSTWorkflowManager(Loggable):
                                    spawner=MockSpawner(parent=self),
                                    authenticator=AM(parent=self))
             lm.spawner.user = self.user
+            lm.authenticator.set_auth_fields(user=self.user)
             cfg = lm.config
             em = lm.env_mgr
             vm = lm.volume_mgr
@@ -144,7 +145,7 @@ class LSSTWorkflowManager(Loggable):
                     self.user.dump()))
             username = self.user.name
             uid = self.user.uid
-            gids = assemble_gids(self.user.claims["isMemberOf"])
+            gids = assemble_gids(self.user.claims)
             em.create_pod_env()
             em_env = em.get_env()
             self.log.debug("Environment after em.get_env(): {}".format(em_env))
@@ -374,19 +375,20 @@ class LSSTWorkflowManager(Loggable):
                 user.__class__.__name__))
             self.log.debug(
                 "submit_workflow username: {}".format(user.escaped_name))
-            lm = LSSTMiddleManager(parent=self, config=LSSTConfig())
-            lm.user = self.user  # Only works because JupyterHub Users and
-            # our users both have escaped_name fields
+            lm = LSSTMiddleManager(parent=self,
+                                   config=LSSTConfig(),
+                                   user=self.user,
+                                   spawner=MockSpawner(parent=self),
+                                   authenticator=AM(parent=self))
             nm = lm.namespace_mgr
             nm.namespace = user.namespace
-            lm.spawner = MockSpawner()
             lm.spawner.user = user
+            lm.authenticator.set_auth_fields(user=user)
             qm = lm.quota_mgr
             om = lm.optionsform_mgr
             om._make_sizemap()  # Guess it should be a public method.
             qm.define_resource_quota_spec()
-            nm.ensure_namespace()
-            nm.ensure_namespaced_service_account()
+            nm.ensure_namespace(namespace=user.namespace)
             wf = self.create_workflow()
             return wf
 

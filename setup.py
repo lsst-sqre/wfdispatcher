@@ -50,16 +50,15 @@ setuptools.setup(
         'License :: OSI Approved :: MIT License',
     ],
     keywords=['lsst', 'rubinobservatory', 'argo', 'workflow', 'jupyter'],
-    # Newer kubernetes versions do not work; swagger_types has gone away.
     install_requires=[
-        'requests>=2.0.0,<3.0.0',
-        'semver>=2.0.0,<3.0.0',
-        'jupyterhubutils>=0.22.0,<1.0.0',
-        'kubernetes>=10.0.0,<11.0.0',
-        'wsgiserver>=1.3,<2.0.0',
-        'falcon>=2.0.0,<3.0.0',
-        'argo-workflows>=3.0.0,<4.0.0',
-        'pyyaml>=5.0.0,<6.0.0',
+        'requests>=2,<3',
+        'semver>=2,<3',
+        'jupyterhubutils<1.0.0',
+        'kubernetes>=11',
+        'wsgiserver>=1.3,<2',
+        'falcon>=2,<3',
+        'argo-workflows>=3,<4',
+        'pyyaml>=5,<6',
     ],
     entry_points={
         'console_scripts': [
