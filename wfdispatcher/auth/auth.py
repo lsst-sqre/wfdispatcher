@@ -1,8 +1,8 @@
 from eliot import start_action
 from jupyterhubutils import LoggableChild
-from ..helpers.make_mock_user import make_mock_user
 from ..helpers.extract_user_from_req import extract_user_from_req
-from ..spawner import MockSpawner
+from ..helpers.make_mock_user import make_mock_user
+from ..helpers.mockspawner import MockSpawner
 
 
 class AuthenticatorMiddleware(LoggableChild):

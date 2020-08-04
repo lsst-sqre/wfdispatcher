@@ -15,7 +15,6 @@ from jupyterhubutils import Loggable, LSSTMiddleManager, LSSTConfig
 from jupyterhubutils.utils import (list_digest, str_true, assemble_gids,
                                    get_supplemental_gids)
 from ..helpers.extract_user_from_req import extract_user_from_req
-from ..spawner.spawner import MockSpawner
 from ..auth.auth import AuthenticatorMiddleware as AM
 
 
