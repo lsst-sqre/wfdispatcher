@@ -2,6 +2,7 @@ from eliot import start_action
 from jupyterhubutils import LoggableChild
 from ..helpers.make_mock_user import make_mock_user
 from ..helpers.extract_user_from_req import extract_user_from_req
+from ..spawner import MockSpawner
 
 
 class AuthenticatorMiddleware(LoggableChild):
@@ -19,7 +20,7 @@ class AuthenticatorMiddleware(LoggableChild):
                                            'X-Portal-Authorization')
         self.username_claim_field = kwargs.pop('username_claim_field', 'uid')
         self.user = None
-        self.cached_auth_state = {}
+        self.spawner = None
 
     def process_request(self, req, resp):
         '''Get auth token from request.  Raise if it does not validate.'''
@@ -43,6 +44,5 @@ class AuthenticatorMiddleware(LoggableChild):
             user = self.user
         if not user:
             raise RuntimeError("Could not determine user!")
+        self.spawner = MockSpawner(user=user)
         self.user = user
-        self.cached_auth_state = {'claims': user.claims,
-                                  'access_token': user.access_token}

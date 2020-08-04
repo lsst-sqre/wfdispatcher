@@ -129,10 +129,11 @@ class LSSTWorkflowManager(Loggable):
             lm = LSSTMiddleManager(parent=self,
                                    config=LSSTConfig(),
                                    user=self.user,
-                                   spawner=MockSpawner(parent=self),
                                    authenticator=AM(parent=self))
             lm.authenticator.set_auth_fields(self.user)
-            lm.spawner.user = self.user
+            # That created a spawner on the authenticator with correct
+            #  fields.
+            lm.spawner = lm.authenticator.spawner
             cfg = lm.config
             em = lm.env_mgr
             vm = lm.volume_mgr
@@ -397,12 +398,13 @@ class LSSTWorkflowManager(Loggable):
             lm = LSSTMiddleManager(parent=self,
                                    config=LSSTConfig(),
                                    user=user,
-                                   spawner=MockSpawner(parent=self),
                                    authenticator=AM(parent=self))
+            # That created a spawner on the authenticator with correct
+            #  fields.
             lm.authenticator.set_auth_fields(self.user)
+            lm.spawner = lm.authenticator.spawner
             nm = lm.namespace_mgr
             nm.namespace = user.namespace
-            lm.spawner.user = user
             qm = lm.quota_mgr
             om = lm.optionsform_mgr
             om._make_sizemap()  # Guess it should be a public method.
