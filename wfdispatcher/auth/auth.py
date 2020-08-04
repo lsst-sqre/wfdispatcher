@@ -44,5 +44,5 @@ class AuthenticatorMiddleware(LoggableChild):
             user = self.user
         if not user:
             raise RuntimeError("Could not determine user!")
-        self.spawner = MockSpawner(user=user)
+        self.spawner = MockSpawner(parent=self, user=user)
         self.user = user
