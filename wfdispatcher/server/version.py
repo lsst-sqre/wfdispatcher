@@ -1,7 +1,7 @@
 import falcon
 from eliot import log_call
 from .._version import __version__
-from jupyterhubutils import Loggable
+from rubin_jupyter_utils.hub import Loggable
 
 
 class Version(Loggable):

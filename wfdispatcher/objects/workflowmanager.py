@@ -11,20 +11,21 @@ from kubernetes.client import (V1ResourceRequirements, V1PodSecurityContext,
                                V1Volume, V1VolumeMount, V1ConfigMap,
                                V1ObjectMeta)
 from kubernetes.client.rest import ApiException
-from jupyterhubutils import Loggable, LSSTMiddleManager, LSSTConfig
+from rubin_jupyter_utils.hub import Loggable, RubinMiddleManager
+from rubin_jupyter_utils.config import RubinConfig
 from jupyterhubutils.utils import (list_digest, str_true, assemble_gids,
                                    get_supplemental_gids)
 from ..helpers.extract_user_from_req import extract_user_from_req
 from ..auth.auth import AuthenticatorMiddleware as AM
 
 
-class LSSTWorkflowManager(Loggable):
-    '''This class contains LSST (er, Rubin Observatory)- specific logic
-    regarding management of Argo Workflows.  it must be initialized with
-    a Request (from the requests module), whose authentication header
+class RubinWorkflowManager(Loggable):
+    '''This class contains Rubin Observatory-specific logic regarding
+    management of Argo Workflows.  it must be initialized with a
+    Request (from the requests module), whose authentication header
     (usually 'X-Portal-Authorization') contains a JWT with claims that
-    specify the user (in username_claim_field, usually 'uid') used to make
-    the Workflow request.
+    specify the user (in username_claim_field, usually 'uid') used to
+    make the Workflow request.
 
     '''
 
@@ -125,18 +126,18 @@ class LSSTWorkflowManager(Loggable):
             # FIXME Right now we can assume data is of type 'cmd'; we need
             # a little tweaking for 'nb' in that the command will be fixed
             # and the execution parameters will differ.
-            lm = LSSTMiddleManager(parent=self,
-                                   config=LSSTConfig(),
-                                   user=self.user,
-                                   authenticator=AM(parent=self))
-            lm.authenticator.set_auth_fields(self.user)
+            rm = RubinMiddleManager(parent=self,
+                                    config=RubinConfig(),
+                                    user=self.user,
+                                    authenticator=AM(parent=self))
+            rm.authenticator.set_auth_fields(self.user)
             # That created a spawner on the authenticator with correct
             #  fields.
-            lm.spawner = lm.authenticator.spawner
-            cfg = lm.config
-            em = lm.env_mgr
-            vm = lm.volume_mgr
-            om = lm.optionsform_mgr
+            rm.spawner = rm.authenticator.spawner
+            cfg = rm.config
+            em = rm.env_mgr
+            vm = rm.volume_mgr
+            om = rm.optionsform_mgr
             om._make_sizemap()
             # We use the user we created from the request that created the
             #  Workflow Manager.
@@ -394,18 +395,18 @@ class LSSTWorkflowManager(Loggable):
                 user.__class__.__name__))
             self.log.debug(
                 "submit_workflow username: {}".format(user.escaped_name))
-            lm = LSSTMiddleManager(parent=self,
-                                   config=LSSTConfig(),
-                                   user=user,
-                                   authenticator=AM(parent=self))
+            rm = RubinMiddleManager(parent=self,
+                                    config=RubinConfig(),
+                                    user=user,
+                                    authenticator=AM(parent=self))
             # That created a spawner on the authenticator with correct
             #  fields.
-            lm.authenticator.set_auth_fields(self.user)
-            lm.spawner = lm.authenticator.spawner
-            nm = lm.namespace_mgr
+            rm.authenticator.set_auth_fields(self.user)
+            rm.spawner = rm.authenticator.spawner
+            nm = rm.namespace_mgr
             nm.namespace = user.namespace
-            qm = lm.quota_mgr
-            om = lm.optionsform_mgr
+            qm = rm.quota_mgr
+            om = rm.optionsform_mgr
             om._make_sizemap()  # Guess it should be a public method.
             qm.define_resource_quota_spec()
             # Not setting up workflows with a daskconfig.  Might need to

@@ -2,7 +2,8 @@ import json
 import requests
 from eliot import log_call
 from json.decoder import JSONDecodeError
-from jupyterhubutils import Loggable, get_access_token
+from rubin_jupyter_utils.hub import Loggable
+from rubin_jupyter_utils.helpers import get_access_token
 
 
 class Client(Loggable):

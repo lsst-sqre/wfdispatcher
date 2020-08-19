@@ -1,5 +1,5 @@
 from eliot import start_action
-from jupyterhubutils import LoggableChild
+from rubin_jupyter_utils.hub import LoggableChild
 from ..helpers.extract_user_from_req import extract_user_from_req
 from ..helpers.make_mock_user import make_mock_user
 from ..helpers.mockspawner import MockSpawner

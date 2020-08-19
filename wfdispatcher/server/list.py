@@ -1,5 +1,5 @@
 from eliot import log_call
-from jupyterhubutils import LoggableChild
+from rubin_jupyter_utils.hub import LoggableChild
 from ..objects.workflowmanager import LSSTWorkflowManager
 
 

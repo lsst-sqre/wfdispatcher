@@ -1,6 +1,6 @@
 from eliot import log_call
 from falcon import HTTPNotFound
-from jupyterhubutils import LoggableChild
+from rubin_jupyter_utils.hub import LoggableChild
 from ..helpers.sanitize import sanitize
 from ..objects.workflowmanager import LSSTWorkflowManager
 

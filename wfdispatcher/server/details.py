@@ -1,4 +1,4 @@
-from jupyterhubutils import LoggableChild
+from rubin_jupyter_utils.hub import LoggableChild
 from eliot import log_call
 from falcon import HTTPNotFound
 from ..helpers.sanitize import sanitize

@@ -1,8 +1,9 @@
 import json
 import falcon
 from eliot import log_call, start_action
-from jupyterhubutils import LoggableChild, LSSTMiddleManager, LSSTConfig
-from ..objects.workflowmanager import LSSTWorkflowManager
+from rubin_jupyter_utils.hub import LoggableChild, RubinMiddleManager
+from rubin_jupyter_utils.config import RubinConfig
+from ..objects.workflowmanager import RubinWorkflowManager
 
 
 class New(LoggableChild):
@@ -21,7 +22,7 @@ class New(LoggableChild):
                       only relevant with type cmd> ],
 
           image: <nublado image str, e.g. 'lsstsqre/sciplat-lab:w_2020_01'>,
-          size: <str from form_sizelist in LSSTConfig>,
+          size: <str from form_sizelist in RubinConfig>,
           no_sudo: <bool>,
           debug: <bool>
         }
@@ -82,14 +83,14 @@ class New(LoggableChild):
         if not image:
             raise ue("No image specified for container!")
         sz = data.get('size')
-        lm = LSSTMiddleManager(parent=self, config=LSSTConfig())
-        szl = lm.config.form_sizelist
+        rm = RubinMiddleManager(parent=self, config=RubinConfig())
+        szl = rm.config.form_sizelist
         if type(sz) is not str or sz not in szl:
             raise ue(
                 description="'size' must be a string from '{}'!".format(szl))
 
     def make_workflow(self, req, data):
         with start_action(action_type="make_workflow"):
-            wm = LSSTWorkflowManager(req=req)
+            wm = RubinWorkflowManager(req=req)
             wf = wm.submit_workflow(data)
             return wf

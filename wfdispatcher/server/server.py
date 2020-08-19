@@ -12,7 +12,7 @@ from .logs import Logs
 from .pods import Pods
 from .singleworkflow import SingleWorkflow
 from .version import Version
-from jupyterhubutils import Loggable
+from rubin_jupyter_utils.hub import Loggable
 
 
 class Server(Loggable):

@@ -1,6 +1,7 @@
 import falcon
 from eliot import start_action
-from jupyterhubutils.utils import get_execution_namespace, parse_access_token
+from rubin_jupyter_utils.helpers import (get_execution_namespace,
+                                         parse_access_token)
 from urllib.parse import quote
 from .extract_access_token_from_req import extract_access_token_from_req
 from ..user.user import User
