@@ -6,7 +6,6 @@ from ..objects.workflowmanager import LSSTWorkflowManager
 
 
 class SingleWorkflow(LoggableChild):
-
     @log_call
     def on_get(self, req, resp, wf_id):
         self.log.debug("Getting workflow '{}'".format(wf_id))
@@ -23,8 +22,8 @@ class SingleWorkflow(LoggableChild):
         wf = wm.delete_workflow(wf_id)
         if not wf:
             raise HTTPNotFound()
-        status = wf['status']
+        status = wf["status"]
         rv = {"status": status}
         if status == "Success":
-            rv['name'] = wf['details']['name']
+            rv["name"] = wf["details"]["name"]
         resp.media = rv

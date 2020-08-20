@@ -4,7 +4,6 @@ from rubin_jupyter_utils.hub import LoggableChild
 
 
 class Pods(LoggableChild):
-
     @log_call
     def on_get(self, req, resp, wf_id):
         self.log.debug("Determining pods in workflow '{}'".format(wf_id))

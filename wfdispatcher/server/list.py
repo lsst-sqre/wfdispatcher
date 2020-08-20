@@ -4,7 +4,6 @@ from ..objects.workflowmanager import LSSTWorkflowManager
 
 
 class List(LoggableChild):
-
     @log_call
     def on_get(self, req, resp):
         wm = LSSTWorkflowManager(req=req)

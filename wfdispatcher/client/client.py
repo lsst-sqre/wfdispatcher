@@ -7,11 +7,10 @@ from rubin_jupyter_utils.helpers import get_access_token
 
 
 class Client(Loggable):
-
     def __init__(self, *args, **kwargs):
         self.access_token = None
-        self.auth_header_name = 'X-Portal-Authorization'
-        self.env_var_name = 'ACCESS_TOKEN'
+        self.auth_header_name = "X-Portal-Authorization"
+        self.env_var_name = "ACCESS_TOKEN"
         self.api_url = "http://localhost:8080/"
         self.headers = {}
         self.last_response = None
@@ -20,35 +19,39 @@ class Client(Loggable):
 
         super().__init__(*args, **kwargs)
         auth_header_name = kwargs.pop(
-            'auth_header_name', self.auth_header_name)
+            "auth_header_name", self.auth_header_name
+        )
         self.auth_header_name = auth_header_name
-        env_var_name = kwargs.pop('env_var_name', self.env_var_name)
+        env_var_name = kwargs.pop("env_var_name", self.env_var_name)
         self.env_var_name = env_var_name
-        access_token = kwargs.pop('access_token', self.access_token)
+        access_token = kwargs.pop("access_token", self.access_token)
         if not access_token:
-            tokenfile = kwargs.pop('tokenfile', None)
+            tokenfile = kwargs.pop("tokenfile", None)
             access_token = get_access_token(tokenfile=tokenfile)
         if not access_token:
             raise RuntimeError("Could not determine access token!")
         self.access_token = access_token
         self.make_headers()
-        api_url = kwargs.pop('api_url', self.api_url)
+        api_url = kwargs.pop("api_url", self.api_url)
         self.api_url = api_url
         # Canonicalize
-        if not self.api_url.endswith('/'):
+        if not self.api_url.endswith("/"):
             self.api_url = "{}/".format(self.api_url)
-        data = kwargs.pop('data', self.data)
+        data = kwargs.pop("data", self.data)
         self.data = data
-        post_json_file = kwargs.pop('post_json_file', self.post_json_file)
+        post_json_file = kwargs.pop("post_json_file", self.post_json_file)
         self.post_json_file = post_json_file
         if not self.data and self.post_json_file:
             self.load_data()
 
     @log_call
     def make_headers(self):
-        self.headers = {"{}".format(self.auth_header_name): "bearer {}".format(
-            self.access_token),
-            "Content-Type": "application/json"}
+        self.headers = {
+            "{}".format(self.auth_header_name): "bearer {}".format(
+                self.access_token
+            ),
+            "Content-Type": "application/json",
+        }
 
     @log_call
     def make_request(self, path=None, verb="GET"):
@@ -59,7 +62,7 @@ class Client(Loggable):
         if verb == "POST":
             if data is None:
                 raise ValueError("Data for POST cannot be None!")
-            data['access_token'] = self.access_token
+            data["access_token"] = self.access_token
         else:
             data = None
         url = "{}{}".format(self.api_url, path)
@@ -72,12 +75,12 @@ class Client(Loggable):
         if data:
             d_copy = {}
             d_copy.update(data)
-            d_copy['access_token'] = "[REDACTED]"
-            dstr += " and data '{}'".format(json.dumps(d_copy, sort_keys=True,
-                                                       indent=4))
+            d_copy["access_token"] = "[REDACTED]"
+            dstr += " and data '{}'".format(
+                json.dumps(d_copy, sort_keys=True, indent=4)
+            )
         self.log.debug(dstr)
-        response = requests.request(
-            verb, url, headers=self.headers, json=data)
+        response = requests.request(verb, url, headers=self.headers, json=data)
         try:
             jr = response.json()
             self.last_response = jr
@@ -88,7 +91,7 @@ class Client(Loggable):
 
     @log_call
     def load_data(self):
-        with open(self.post_json_file, 'r') as f:
+        with open(self.post_json_file, "r") as f:
             self.data = json.load(f)
         self.log.debug("Loaded data: {}".format(self.data))
 

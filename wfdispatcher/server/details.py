@@ -6,11 +6,13 @@ from ..objects.workflowmanager import LSSTWorkflowManager
 
 
 class Details(LoggableChild):
-
     @log_call
     def on_get(self, req, resp, wf_id, pod_id):
-        self.log.debug("Getting details for pod '{}' in workflow '{}'".format(
-            pod_id, wf_id))
+        self.log.debug(
+            "Getting details for pod '{}' in workflow '{}'".format(
+                pod_id, wf_id
+            )
+        )
         wm = LSSTWorkflowManager(req=req)
         wf = wm.get_workflow(wf_id)
         if not wf:
