@@ -1,13 +1,13 @@
 from eliot import log_call
 from rubin_jupyter_utils.hub import LoggableChild
-from ..objects.workflowmanager import LSSTWorkflowManager
+from ..objects.workflowmanager import RubinWorkflowManager
 
 
 class List(LoggableChild):
     @log_call
     def on_get(self, req, resp):
-        wm = LSSTWorkflowManager(req=req)
-        wfs = wm.list_workflows()
+        rm = RubinWorkflowManager(req=req)
+        wfs = rm.list_workflows()
         if not wfs:
             resp.media = []
             return

@@ -2,7 +2,7 @@ from rubin_jupyter_utils.hub import LoggableChild
 from eliot import log_call
 from falcon import HTTPNotFound
 from ..helpers.sanitize import sanitize
-from ..objects.workflowmanager import LSSTWorkflowManager
+from ..objects.workflowmanager import RubinWorkflowManager
 
 
 class Details(LoggableChild):
@@ -13,8 +13,8 @@ class Details(LoggableChild):
                 pod_id, wf_id
             )
         )
-        wm = LSSTWorkflowManager(req=req)
-        wf = wm.get_workflow(wf_id)
+        rm = RubinWorkflowManager(req=req)
+        wf = rm.get_workflow(wf_id)
         if not wf:
             raise HTTPNotFound()
         nd = wf.status.nodes

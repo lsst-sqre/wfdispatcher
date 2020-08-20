@@ -14,6 +14,7 @@ def standalone():
         "delete",
         "inspect",
         "logs",
+        "rawlogs",
         "pod",
         "details",
         "version",
