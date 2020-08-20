@@ -13,8 +13,8 @@ from kubernetes.client import (V1ResourceRequirements, V1PodSecurityContext,
 from kubernetes.client.rest import ApiException
 from rubin_jupyter_utils.hub import Loggable, RubinMiddleManager
 from rubin_jupyter_utils.config import RubinConfig
-from jupyterhubutils.utils import (list_digest, str_true, assemble_gids,
-                                   get_supplemental_gids)
+from rubin_jupyterutils.helpers import (list_digest, str_true, assemble_gids,
+                                        get_supplemental_gids)
 from ..helpers.extract_user_from_req import extract_user_from_req
 from ..auth.auth import AuthenticatorMiddleware as AM
 
