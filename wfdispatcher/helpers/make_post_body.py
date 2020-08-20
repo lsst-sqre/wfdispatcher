@@ -6,6 +6,6 @@ def make_post_body():
         "type": "cmd",
         "command": ["/bin/echo", "Hello, world!"],
         "image": "lsstsqre/sciplat-lab:w_2020_04",
-        "size": "small"
+        "size": "small",
     }
     return json.dumps(data)

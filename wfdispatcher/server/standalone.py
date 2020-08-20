@@ -5,21 +5,34 @@ from .server import Server
 
 
 def standalone():
-    '''Standalone command for starting a server.
-    '''
+    """Standalone command for starting a server.
+    """
     parser = argparse.ArgumentParser(
-        description="Start Argo Workflow API Dispatch Server")
-    parser.add_argument("-p", "--port", help="Server listening port",
-                        type=int, default=8080)
-    parser.add_argument("-b", "--bind-address", help="Server bind address",
-                        default="127.0.0.1")
-    parser.add_argument("-m", "--mock", "--mock-authentication",
-                        action='store_true',
-                        help="Do not require a JWT; mock out authentication")
-    parser.add_argument("--no-verify-signature", action='store_true',
-                        help="Do not verify JWT signature")
-    parser.add_argument("--no-verify-audience", action='store_true',
-                        help="Do not verify JWT audience")
+        description="Start Argo Workflow API Dispatch Server"
+    )
+    parser.add_argument(
+        "-p", "--port", help="Server listening port", type=int, default=8080
+    )
+    parser.add_argument(
+        "-b", "--bind-address", help="Server bind address", default="127.0.0.1"
+    )
+    parser.add_argument(
+        "-m",
+        "--mock",
+        "--mock-authentication",
+        action="store_true",
+        help="Do not require a JWT; mock out authentication",
+    )
+    parser.add_argument(
+        "--no-verify-signature",
+        action="store_true",
+        help="Do not verify JWT signature",
+    )
+    parser.add_argument(
+        "--no-verify-audience",
+        action="store_true",
+        help="Do not verify JWT audience",
+    )
     args = parser.parse_args()
     mock = args.mock
     v_s = True
@@ -33,5 +46,5 @@ def standalone():
     httpd.start()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     standalone()

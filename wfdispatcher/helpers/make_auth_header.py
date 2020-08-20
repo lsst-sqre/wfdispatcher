@@ -8,7 +8,7 @@ def make_auth_header(_mock=False):
         user = make_mock_user()
     else:
         user = make_user_from_env()
-    claims = user.auth_state['claims']
-    token = jwt.encode(claims, 'dummy')
-    header = 'X-Portal-Authorization: bearer {}'.format(token)
+    claims = user.auth_state["claims"]
+    token = jwt.encode(claims, "dummy")
+    header = "X-Portal-Authorization: bearer {}".format(token)
     return header

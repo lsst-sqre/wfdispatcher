@@ -2,8 +2,8 @@ from argo.workflows.client import ApiClient
 
 
 def sanitize(obj):
-    '''Return an object suitable for a JSON post.
-    '''
+    """Return an object suitable for a JSON post.
+    """
     cl = ApiClient()
     try:
         return cl.sanitize_for_serialization(obj)
