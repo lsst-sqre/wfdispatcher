@@ -14,14 +14,18 @@ class New(LoggableChild):
 
         The body structure must look like:
         {
-          type: <lsp workflow type, either 'nb' or 'cmd',
-          kernel:  <only relevant with type nb: kernel name, e.g. 'LSST'>,
+          type: <lsp workflow type, either 'nb' or 'cmd'--currently only 'cmd'
+                 is allowed>,
           command: [ <list of tokens to assemble to make a command line;
                       quoting rules are the same as python's shlex;
-                      only relevant with type cmd> ],
-
+                      only relevant with type 'cmd'> ],
+          notebook: <str: notebook fully-qualified filename, only relevant
+                     with type 'nb'>,
+          kernel:  <only relevant with type 'nb': kernel name, e.g. 'LSST'>,
           image: <nublado image str, e.g. 'lsstsqre/sciplat-lab:w_2020_01'>,
           size: <str from form_sizelist in RubinConfig>,
+          name: <str, by default derived from command if type 'cmd' or
+                 notebook filename if type 'nb'>,
           no_sudo: <bool>,
           debug: <bool>
         }
@@ -64,13 +68,15 @@ class New(LoggableChild):
                 )
             )
         if typ == "nb":
-            raise ue("Execution type 'nb' not yet supported!")
-            # We do not get here, but once we do....
+            raise ue("Type 'nb' not supported yet.")
             kernel = type.get("kernel")
             if type(kernel) is not str:
                 raise ue(description="'kernel' must be a string!")
             if not kernel:
                 raise ue(description="No kernel specified for notebook!")
+            nb = data.get("notebook")
+            if type(nb) is not str:
+                raise ue(description="'notebook' must be a string!")
         elif typ == "cmd":
             cmd = data.get("command")
             if type(cmd) is not list:
