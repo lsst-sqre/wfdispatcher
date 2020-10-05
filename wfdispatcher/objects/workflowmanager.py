@@ -224,11 +224,13 @@ class RubinWorkflowManager(Loggable):
             vols.append(self.cmd_vol)
             vmts.append(self.cmd_mt)
             env["DASK_VOLUME_B64"] = vm.get_dask_volume_b64()
-            cname = "wf-{}-{}-{}".format(
-                username,
-                data["image"].split(":")[-1].replace("_", "-"),
-                data["command"][0].split("/")[-1].replace("_", "-"),
-            )
+            cname = data.get("name")
+            if not cname:
+                cname = "wf-{}-{}-{}".format(
+                    username,
+                    data["image"].split(":")[-1].replace("_", "-"),
+                    data["command"][0].split("/")[-1].replace("_", "-"),
+                )
             wf_input["name"] = cname
             env["MEM_LIMIT"] = ml
             env["MEM_GUARANTEE"] = mg
