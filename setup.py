@@ -53,7 +53,7 @@ setuptools.setup(
     install_requires=[
         "requests>=2,<3",
         "semver>=2,<3",
-        "rubin_jupyter_utils.hub>=0.30.1,<1.0.0",
+        "rubin_jupyter_utils.hub>=0.33.0,<1.0.0",
         "kubernetes>=11",
         "wsgiserver>=1.3,<2",
         "falcon>=2,<3",
